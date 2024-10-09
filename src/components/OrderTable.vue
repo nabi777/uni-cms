@@ -1,58 +1,73 @@
 <template>
-  <section class="order-table">
-    <table>
-      <thead>
-        <tr>
-          <th>Order ID</th>
-          <th>Customer Name</th>
-          <th>Order Type</th>
-          <th>Modified Date & Time</th>
-          <th>Status</th>
-          <th>Action</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="(order, index) in paginatedOrders" :key="order.order_id">
-          <td>{{ order.order_id }}</td>
-          <td>{{ order.customer_name }}</td>
-          <td>{{ order.order_type }}</td>
-          <td>{{ order.modified_date_time }}</td>
-          <td>{{ order.status || 'Pending' }}</td>
-          <td>
-            <div class="dropdown" :ref="`dropdown_${index}`">
-              <button class="action-btn" @click="toggleDropdown(index)">...</button>
-              <div v-if="dropdownVisible === index" class="dropdown-content">
-                <a href="#" @click.prevent="editOrder(order)">Edit</a>
-                <a href="#" @click.prevent="deleteOrder(order.order_id)">Delete</a>
-                <a href="#" @click.prevent="submitOrder(order)">Submit</a>
+  <div>
+    <section class="order-table">
+      <table>
+        <thead>
+          <tr>
+            <th>Order ID</th>
+            <th>Customer Name</th>
+            <th>Order Type</th>
+            <th>Modified Date & Time</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(order, index) in paginatedOrders" :key="order.order_id">
+            <td>{{ order.order_id }}</td>
+            <td>{{ order.customer_name }}</td>
+            <td>{{ order.order_type }}</td>
+            <td>{{ order.modified_date_time }}</td>
+            <td>{{ order.status || 'Pending' }}</td>
+            <td>
+              <div class="dropdown" :ref="`dropdown_${index}`">
+                <button class="action-btn" @click="toggleDropdown(index)">...</button>
+                <div v-if="dropdownVisible === index" class="dropdown-content">
+                  <a href="#" @click.prevent="editOrder(order)">Edit</a>
+                  <a href="#" @click.prevent="deleteOrder(order.order_id)">Delete</a>
+                  <a href="#" @click.prevent="openCalibrationForm(order)">Submit</a>
+                </div>
               </div>
-            </div>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-    <div class="table-footer">
-      <div class="total-items">
-        Total {{ filteredOrders.length }} items
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="table-footer">
+        <div class="total-items">
+          Total {{ filteredOrders.length }} items
+        </div>
+        <div class="pagination">
+          <button @click="prevPage" :disabled="currentPage === 1">← Prev</button>
+          <button @click="nextPage" :disabled="currentPage === totalPages">Next →</button>
+        </div>
       </div>
-      <div class="pagination">
-        <button @click="prevPage" :disabled="currentPage === 1">← Prev</button>
-        <button @click="nextPage" :disabled="currentPage === totalPages">Next →</button>
-      </div>
-    </div>
-  </section>
+    </section>
+
+    <!-- New Calibration Form -->
+    <NewCalibrationForm
+      v-if="showCalibrationForm"
+      :orderId="selectedOrderId"
+      @close="closeCalibrationForm"
+      @submit="handleCalibrationSubmit"
+    />
+  </div>
 </template>
 
 <script>
 import axios from 'axios';
+import NewCalibrationForm from './NewCalibrationForm.vue'; // Ensure this import points to your actual NewCalibrationForm component
 
 export default {
   name: 'OrderTable',
+  components: {
+    NewCalibrationForm,
+  },
   props: {
     searchQuery: {
       type: String,
-      default: ''
-    }
+      default: '',
+    },
   },
   data() {
     return {
@@ -60,12 +75,14 @@ export default {
       currentPage: 1,
       itemsPerPage: 5,
       dropdownVisible: null,
+      showCalibrationForm: false,
+      selectedOrderId: null, // To track which order is selected for calibration
     };
   },
   computed: {
     filteredOrders() {
       const lowercasedQuery = this.searchQuery.toLowerCase();
-      return this.orders.filter(order => {
+      return this.orders.filter((order) => {
         return (
           order.customer_name.toLowerCase().includes(lowercasedQuery) ||
           order.order_type.toLowerCase().includes(lowercasedQuery)
@@ -79,7 +96,7 @@ export default {
       const start = (this.currentPage - 1) * this.itemsPerPage;
       const end = start + this.itemsPerPage;
       return this.filteredOrders.slice(start, end);
-    }
+    },
   },
   methods: {
     async fetchOrders() {
@@ -94,7 +111,7 @@ export default {
       if (confirm(`Are you sure you want to delete order with ID: ${orderId}?`)) {
         try {
           await axios.delete(`http://localhost:3000/api/orders/${orderId}`);
-          this.orders = this.orders.filter(order => order.order_id !== orderId);
+          this.orders = this.orders.filter((order) => order.order_id !== orderId);
         } catch (error) {
           console.error('Error deleting order:', error);
           alert('Failed to delete the order. Please try again.');
@@ -122,17 +139,38 @@ export default {
     editOrder(order) {
       this.$emit('edit-order', order);
     },
+    openCalibrationForm(order) {
+      this.selectedOrderId = order.order_id;
+      this.showCalibrationForm = true;
+    },
+    closeCalibrationForm() {
+      this.showCalibrationForm = false;
+    },
+    handleCalibrationSubmit(formData) {
+      console.log('Submitted calibration details:', formData);
+      this.showCalibrationForm = false;
+    },
     submitOrder(order) {
       alert(`Submitting order with ID: ${order.order_id}`);
       order.status = 'Submitted';
-    }
+    },
+    prevPage() {
+      if (this.currentPage > 1) {
+        this.currentPage--;
+      }
+    },
+    nextPage() {
+      if (this.currentPage < this.totalPages) {
+        this.currentPage++;
+      }
+    },
   },
   mounted() {
     this.fetchOrders();
   },
   beforeUnmount() {
     document.removeEventListener('click', this.handleOutsideClick);
-  }
+  },
 };
 </script>
 
@@ -154,7 +192,8 @@ thead {
   background-color: #f8f9fa;
 }
 
-th, td {
+th,
+td {
   padding: 10px;
   border: 1px solid #dee2e6;
   text-align: left;

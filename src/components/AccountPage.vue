@@ -8,11 +8,11 @@
         @buttonClick="handleTopBarButtonClick"
       />
       <SearchBar
-        v-if="showSearchBar && !isOrderFormVisible && !isEditOrderFormVisible && !isEditAccountFormVisible && !isEditCustomerFormVisible && !isEditProductFormVisible && !isEditModelFormVisible"
+        v-if="showSearchBar && !isOrderFormVisible && !isEditOrderFormVisible && !isEditAccountFormVisible && !isEditCustomerFormVisible && !isEditProductFormVisible && !isEditModelFormVisible && !isUsersPageVisible"
         @search="handleSearch"
       />
       <component
-        v-if="!isOrderFormVisible && !isEditOrderFormVisible && !isEditAccountFormVisible && !isEditCustomerFormVisible && !isEditProductFormVisible && !isEditModelFormVisible"
+        v-if="!isOrderFormVisible && !isEditOrderFormVisible && !isEditAccountFormVisible && !isEditCustomerFormVisible && !isEditProductFormVisible && !isEditModelFormVisible && !isUsersPageVisible"
         :is="currentComponent"
         :searchQuery="searchQuery"
         @edit-order="handleEditOrder"
@@ -20,6 +20,11 @@
         @edit-customer="handleEditCustomer"
         @edit-product="handleEditProduct"
         @edit-model="handleEditModel"
+      />
+      <UsersPage
+        v-if="isUsersPageVisible"
+        @close="closeForm"
+        @submit="refreshUsersTable"
       />
       <NewOrderForm
         v-if="isOrderFormVisible && formType === 'order'"
@@ -107,6 +112,7 @@ import NewAccountForm from './NewAccountForm.vue';
 import NewCustomerForm from './NewCustomerForm.vue';
 import NewProductForm from './NewProductForm.vue';
 import NewModelForm from './NewModelForm.vue';
+import UsersPage from './UsersPage.vue'; // Import UsersPage.vue
 
 export default {
   name: 'AccountPage',
@@ -129,6 +135,7 @@ export default {
     NewCustomerForm,
     NewProductForm,
     NewModelForm,
+    UsersPage, // Register UsersPage.vue
   },
   data() {
     return {
@@ -140,6 +147,7 @@ export default {
       isEditCustomerFormVisible: false,
       isEditProductFormVisible: false,
       isEditModelFormVisible: false,
+      isUsersPageVisible: false, // State for UsersPage visibility
       showModelListForm: false,
       formType: '',
       pageTitle: 'Account Management',
@@ -191,6 +199,7 @@ export default {
       this.isEditCustomerFormVisible = false;
       this.isEditProductFormVisible = false;
       this.isEditModelFormVisible = false;
+      this.isUsersPageVisible = false; // Close UsersPage
       this.showSearchBar = true;
       this.showModelListForm = false;
     },
@@ -209,10 +218,6 @@ export default {
       this.isEditCustomerFormVisible = true;
       this.showSearchBar = false;
     },
-    handleAccountEdit() {
-      this.refreshAccountTable(); // Refresh the account table after editing
-      this.closeForm(); // Close the form after successful edit
-    },
     handleEditProduct(productData) {
       this.editProductData = productData;
       this.isEditProductFormVisible = true;
@@ -225,6 +230,7 @@ export default {
     },
     updateOrder() {
       this.isEditOrderFormVisible = false;
+      this.showSearchBar = true;
     },
     updateAccount() {
       this.isEditAccountFormVisible = false;
@@ -253,6 +259,7 @@ export default {
       this.isEditCustomerFormVisible = false;
       this.isEditProductFormVisible = false;
       this.isEditModelFormVisible = false;
+      this.isUsersPageVisible = false;
       this.showSearchBar = true;
       this.showModelListForm = false;
     },
@@ -278,9 +285,19 @@ export default {
         this.pageTitle = 'Order Management';
         this.buttonText = 'Add New Order';
         this.currentComponent = 'OrderTable';
+      } else if (page === 'register-account') {
+        this.pageTitle = 'Register Account';
+        this.buttonText = 'Add New User';
+        this.isUsersPageVisible = true; // Activate UsersPage
       } else {
         this.currentComponent = 'AccountTable';
       }
+    },
+    refreshUsersTable() {
+      this.currentComponent = '';
+      this.$nextTick(() => {
+        this.isUsersPageVisible = true; // Refresh UsersPage
+      });
     },
     refreshAccountTable() {
       this.currentComponent = '';

@@ -1,7 +1,7 @@
 <template>
-  <div class="edit-order-form" v-if="orderId">
+  <div class="edit-order-form" v-if="orderData">
     <div class="form-header">
-      <h3>Edit Order</h3>
+      <h3>Edit Order - {{ orderData.order_id }}</h3>
       <button class="close-btn" @click="closeForm">✕</button>
     </div>
     <form @submit.prevent="submitForm">
@@ -65,8 +65,18 @@
             <option value="Purchase">Purchase</option>
           </select>
         </div>
-        <div class="form-group invisible-element"></div>
-        <div class="form-group invisible-element"></div>
+
+        <!-- Job Number -->
+        <div class="form-group">
+          <label for="jobNumber">Job Number</label>
+          <input type="text" id="jobNumber" v-model="formData.jobNumber" placeholder="Enter Job Number" required />
+        </div>
+
+        <!-- PO Number -->
+        <div class="form-group">
+          <label for="poNumber">PO Number</label>
+          <input type="text" id="poNumber" v-model="formData.poNumber" placeholder="Enter PO Number" required />
+        </div>
       </div>
 
       <!-- Third Row -->
@@ -79,31 +89,29 @@
       </div>
 
       <!-- Dynamic Model Rows -->
-      <div v-if="addedModels && addedModels.length > 0">
-        <div v-for="(model, index) in addedModels" :key="index" class="form-row model-row">
-          <div class="form-group">
-            <label>Brand</label>
-            <input type="text" v-model="model.brand" readonly />
-          </div>
-          <div class="form-group">
-            <label>Model Number</label>
-            <input type="text" v-model="model.modelNumber" readonly />
-          </div>
-          <div class="form-group">
-            <label>Tag Number</label>
-            <input type="text" v-model="model.tagNumber" placeholder="Optional" />
-          </div>
-          <div class="form-group">
-            <label>Serial Number</label>
-            <input type="text" v-model="model.serialNumber" />
-          </div>
-          <div class="form-group">
-            <label>Cert Number</label>
-            <input type="text" v-model="model.certNumber" />
-          </div>
-          <div class="form-group delete-group">
-            <button type="button" class="delete-model-btn" @click="deleteModel(index)">Delete</button>
-          </div>
+      <div v-for="(model, index) in addedModels" :key="index" class="form-row model-row">
+        <div class="form-group">
+          <label>Brand</label>
+          <input type="text" v-model="model.brand" readonly />
+        </div>
+        <div class="form-group">
+          <label>Model Number</label>
+          <input type="text" v-model="model.modelNumber" readonly />
+        </div>
+        <div class="form-group">
+          <label>Tag Number</label>
+          <input type="text" v-model="model.tagNumber" placeholder="Optional" />
+        </div>
+        <div class="form-group">
+          <label>Serial Number</label>
+          <input type="text" v-model="model.serialNumber" />
+        </div>
+        <div class="form-group">
+          <label>Cert Number</label>
+          <input type="text" v-model="model.certNumber" />
+        </div>
+        <div class="form-group delete-group">
+          <button type="button" class="delete-model-btn" @click="deleteModel(index)">Delete</button>
         </div>
       </div>
 
@@ -118,8 +126,8 @@ import axios from 'axios';
 export default {
   name: 'EditOrderForm',
   props: {
-    orderId: {
-      type: Number,
+    orderData: {
+      type: Object,
       required: true
     }
   },
@@ -131,9 +139,11 @@ export default {
         modelNumber: '',
         salesPerson: '',
         orderType: '',
-        remark: ''
+        remark: '',
+        jobNumber: '',  // New job number field
+        poNumber: ''     // New PO number field
       },
-      addedModels: [], // To hold the models tied to the order
+      addedModels: [], // Models for the order
       customers: [],
       brands: [],
       models: [],
@@ -141,33 +151,42 @@ export default {
     };
   },
   watch: {
-    orderId: {
+    orderData: {
       immediate: true,
-      handler(newOrderId) {
-        if (newOrderId) {
-          this.fetchOrderDetails(newOrderId);
-        }
+      handler(newOrderData) {
+        this.populateOrderForm(newOrderData);
       }
     }
   },
   methods: {
-    async fetchOrderDetails(orderId) {
+    async populateOrderForm(orderData) {
       try {
-        const response = await axios.get(`http://localhost:3000/api/orders/${orderId}`);
+        const response = await axios.get(`http://localhost:3000/api/orders/${orderData.order_id}`);
         const orderDetails = response.data.orderDetails;
 
         // Populate form data
         this.formData = {
           customerName: orderDetails.customer_name,
-          brand: orderDetails.brand_name,
-          modelNumber: orderDetails.model_number,
+          brand: '',
+          modelNumber: '',
           salesPerson: orderDetails.sales_person,
           orderType: orderDetails.order_type,
-          remark: orderDetails.remark
+          remark: orderDetails.remark || '',
+          jobNumber: orderDetails.job_number || '',  // Populate job number
+          poNumber: orderDetails.po_number || ''     // Populate PO number
         };
 
         // Populate models
-        this.addedModels = response.data.models || [];
+        if (orderDetails.models && orderDetails.models.length > 0) {
+          this.addedModels = orderDetails.models.map(model => ({
+            brand: model.brand_name,
+            modelNumber: model.model_number,
+            tagNumber: model.tag_number || '',
+            serialNumber: model.serial_number || '',
+            certNumber: model.cert_number || ''
+          }));
+        }
+
       } catch (error) {
         console.error('Error fetching order details:', error);
       }
@@ -223,14 +242,12 @@ export default {
           salesPerson: this.formData.salesPerson,
           orderType: this.formData.orderType,
           remark: this.formData.remark,
+          jobNumber: this.formData.jobNumber,  // Include job number
+          poNumber: this.formData.poNumber,    // Include PO number
           addedModels: this.addedModels
         };
 
-        const response = await axios.put(`http://localhost:3000/api/orders/${this.orderId}`, orderData);
-        
-        // Log the response
-        console.log('Response:', response);
-
+        await axios.put(`http://localhost:3000/api/orders/${this.orderData.order_id}`, orderData);
         this.$emit('submit', this.formData);
         this.closeForm();
       } catch (error) {

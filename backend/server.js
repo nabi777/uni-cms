@@ -3,6 +3,8 @@ const mysql = require('mysql2');
 const cors = require('cors');
 const app = express();
 const port = 3000;
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcrypt');
 
 app.use(cors());
 app.use(express.json()); // Middleware to parse JSON bodies
@@ -23,52 +25,217 @@ db.connect((err) => {
   console.log('MySQL Connected...');
 });
 
-// Get order by ID
-app.get('/api/orders/:orderId', (req, res) => {
-  const orderId = req.params.orderId;
-  const sql = `SELECT * FROM orders WHERE order_id = ?`;  // Replace with your actual SQL query
-  const modelSql = `SELECT * FROM order_models WHERE order_id = ?`;  // Models associated with the order
-  
-  db.query(sql, [orderId], (err, orderResults) => {
+// insert new user
+const saltRounds = 10; // Define saltRounds for bcrypt hashing
+
+// API to create a new user
+app.post('/api/register', (req, res) => {
+  const { username, password } = req.body;
+
+  if (!username || !password) {
+    return res.status(400).json({ error: 'Username and password are required' });
+  }
+
+  // Hash the password before storing it
+  bcrypt.hash(password, saltRounds, (err, hashedPassword) => {
     if (err) {
-      console.error('Error fetching order:', err);
-      res.status(500).send('Server error');
-      return;
+      return res.status(500).json({ error: 'Error hashing password' });
     }
 
-    db.query(modelSql, [orderId], (err, modelResults) => {
+    // Insert user into the `users` table
+    const insertUserQuery = `INSERT INTO users (username, password) VALUES (?, ?)`;
+
+    db.query(insertUserQuery, [username, hashedPassword], (err, result) => {
       if (err) {
-        console.error('Error fetching order models:', err);
-        res.status(500).send('Server error');
-        return;
+        console.error('Error inserting user:', err);
+        return res.status(500).json({ error: 'Error inserting user' });
       }
 
-      res.json({
-        orderDetails: orderResults[0],
-        models: modelResults
+      res.status(201).json({ message: 'User created successfully' });
+    });
+  });
+});
+
+
+// get users
+app.get('/api/users', (req, res) => {
+  const query = 'SELECT id, username FROM users'; // Fetch only id and username
+  db.query(query, (err, results) => {
+    if (err) {
+      return res.status(500).json({ error: 'Error fetching users' });
+    }
+    res.status(200).json(results);
+  });
+});
+
+// User login
+const SECRET_KEY = 'your_secret_key';
+
+// Login endpoint
+app.post('/api/login', (req, res) => {
+  const { username, password } = req.body;
+
+  // Query to fetch the user by username
+  const userQuery = `SELECT * FROM users WHERE username = ?`;
+
+  db.query(userQuery, [username], (err, results) => {
+    if (err) {
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    if (results.length === 0) {
+      return res.status(401).json({ error: 'Incorrect credentials' });
+    }
+
+    const user = results[0];
+
+    // Compare the entered password with the hashed password in the database
+    bcrypt.compare(password, user.password, (err, isMatch) => {
+      if (err) {
+        return res.status(500).json({ error: 'Error comparing passwords' });
+      }
+
+      if (!isMatch) {
+        return res.status(401).json({ error: 'Incorrect credentials' });
+      }
+
+      // Password matched, generate a JWT token
+      const token = jwt.sign({ userId: user.id, username: user.username }, SECRET_KEY, {
+        expiresIn: '1h',
+      });
+
+      res.json({ message: 'Login successful', token });
+    });
+  });
+});
+
+
+// Insert into `emails` table
+app.post('/api/emails', (req, res) => {
+  const { job_no, po_no, customer_name, cal_date, due_date, to_email_date } = req.body;
+
+  // Validate required fields
+  if (!job_no || !customer_name || !cal_date || !due_date || !to_email_date) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+
+  // Insert query to `emails` table
+  const insertEmailQuery = `INSERT INTO emails (job_no, po_no, customer_name, cal_date, due_date, to_email_date) VALUES (?, ?, ?, ?, ?, ?)`;
+
+  // Execute the query
+  db.query(insertEmailQuery, [job_no, po_no, customer_name, cal_date, due_date, to_email_date], (err, result) => {
+    if (err) {
+      console.error('Error inserting email data:', err);
+      return res.status(500).json({ error: 'Error inserting email data' });
+    }
+
+    // Respond with success message
+    res.status(201).json({ message: 'Email record added successfully' });
+  });
+});
+
+// Update Order by ID
+app.put('/api/orders/:orderId', (req, res) => {
+  const orderId = req.params.orderId;
+  const { customerName, salesPerson, orderType, addedModels } = req.body;
+
+  // SQL queries to update the order and related models
+  const updateOrderSql = `UPDATE orders SET customer_name = ?, sales_person = ?, order_type = ? WHERE order_id = ?`;
+  const updateOrderData = [customerName, salesPerson, orderType, orderId];
+
+  db.query(updateOrderSql, updateOrderData, (err, results) => {
+    if (err) {
+      console.error('Error updating order:', err);
+      return res.status(500).json({ message: 'Error updating order' });
+    }
+
+    // Update models in the database (assuming models are handled in a separate table)
+    const deleteOldModelsSql = `DELETE FROM order_models WHERE order_id = ?`;
+    db.query(deleteOldModelsSql, [orderId], (err) => {
+      if (err) {
+        console.error('Error deleting old models:', err);
+        return res.status(500).json({ message: 'Error deleting old models' });
+      }
+
+      // Insert the new models
+      const insertModelsSql = `INSERT INTO order_models (order_id, brand_name, model_number, tag_number, serial_number, cert_number) VALUES ?`;
+      const modelData = addedModels.map(model => [orderId, model.brand, model.modelNumber, model.tagNumber, model.serialNumber, model.certNumber]);
+
+      db.query(insertModelsSql, [modelData], (err) => {
+        if (err) {
+          console.error('Error inserting models:', err);
+          return res.status(500).json({ message: 'Error inserting models' });
+        }
+
+        // Respond with success
+        res.json({ message: 'Order updated successfully' });
       });
     });
   });
 });
 
-// //get order detail
+// Get order by ID
+app.get('/api/orders/:orderId', (req, res) => {
+  const orderId = req.params.orderId;
+
+  // Fetch the order with the corresponding `order_id`
+  const orderQuery = `SELECT * FROM orders WHERE order_id = ?`;
+  const modelQuery = `SELECT * FROM order_models WHERE order_id = ?`;
+
+  db.query(orderQuery, [orderId], (err, orderResults) => {
+    if (err) {
+      console.error('Error fetching order:', err);
+      return res.status(500).send('Error fetching order');
+    }
+
+    if (orderResults.length === 0) {
+      return res.status(404).send('Order not found');
+    }
+
+    db.query(modelQuery, [orderId], (err, modelResults) => {
+      if (err) {
+        console.error('Error fetching models:', err);
+        return res.status(500).send('Error fetching models');
+      }
+
+      // Log the models being fetched for debugging purposes
+      console.log('Fetched models:', modelResults);
+
+      // Send the order details with the associated models
+      res.json({
+        orderDetails: {
+          ...orderResults[0],
+          models: modelResults
+        }
+      });
+    });
+  });
+});
+
+
 // app.get('/api/orders/:orderId', (req, res) => {
 //   const orderId = req.params.orderId;
+//   const orderQuery = `SELECT * FROM orders WHERE order_id = ?`;
+//   const modelQuery = `SELECT * FROM order_models WHERE order_id = ?`; // This should fetch associated models
 
-//   console.log('Received orderId:', orderId);  // Log the orderId
-
-//   const sql = `CALL GetOrderDetails(?)`; // Make sure the stored procedure exists and works properly
-//   db.query(sql, [orderId], (err, results) => {
+//   db.query(orderQuery, [orderId], (err, orderResults) => {
 //     if (err) {
-//       console.error('Error executing query:', err);
-//       res.status(500).send('Server error');
-//       return;
+//       return res.status(500).send('Error fetching order');
 //     }
-//     res.json({ orderDetails: results[0], models: results[1] }); // Assuming the stored procedure returns both order and models
+//     db.query(modelQuery, [orderId], (err, modelResults) => {
+//       if (err) {
+//         return res.status(500).send('Error fetching models');
+//       }
+//       // Send order details along with associated models
+//       res.json({
+//         orderDetails: {
+//           ...orderResults[0],
+//           models: modelResults // Include models in the response
+//         }
+//       });
+//     });
 //   });
 // });
-
-
 
 // Route to delete an order by ID
 app.delete('/api/orders/:id', (req, res) => {
@@ -127,31 +294,9 @@ app.post('/api/check-cert-number', (req, res) => {
 });
 
 
-// // Route to check if a serial number exists in the order_models table
-// app.post('/api/check-serial-number', (req, res) => {
-//   const { serialNumber } = req.body;
-
-//   if (!serialNumber) {
-//     return res.status(400).json({ error: 'Serial number is required' });
-//   }
-
-//   const sql = 'SELECT COUNT(*) AS count FROM order_models WHERE serial_number = ?';
-//   db.query(sql, [serialNumber], (err, results) => {
-//     if (err) {
-//       console.error('Error checking serial number:', err);
-//       return res.status(500).send('Server error');
-//     }
-
-//     // If count is greater than 0, the serial number exists
-//     const exists = results[0].count > 0;
-//     res.json({ exists });
-//   });
-// });
-
-
-//insert new order
+// // Insert new order
 app.post('/api/orders', (req, res) => {
-  const { customerName, salesPerson, orderType, addedModels } = req.body;
+  const { customerName, salesPerson, orderType, jobNumber, poNumber, addedModels } = req.body;
 
   // Validate required fields
   if (!customerName || !salesPerson || !orderType || !addedModels || addedModels.length === 0) {
@@ -159,9 +304,9 @@ app.post('/api/orders', (req, res) => {
   }
 
   // Insert into `orders` table
-  const insertOrderQuery = `INSERT INTO orders (customer_name, sales_person, order_type) VALUES (?, ?, ?)`;
+  const insertOrderQuery = `INSERT INTO orders (customer_name, sales_person, order_type, job_number, po_number) VALUES (?, ?, ?, ?, ?)`;
 
-  db.query(insertOrderQuery, [customerName, salesPerson, orderType], (err, result) => {
+  db.query(insertOrderQuery, [customerName, salesPerson, orderType, jobNumber, poNumber], (err, result) => {
     if (err) {
       console.error('Error inserting order:', err);
       return res.status(500).json({ error: 'Error inserting order' });
@@ -169,10 +314,10 @@ app.post('/api/orders', (req, res) => {
 
     const orderId = result.insertId; // Get the newly created order ID
 
-    // Insert into `order_models` table for each model
+    // Insert into `order_models` table for each model, using the `order_id` from the `orders` table
     const insertModelQuery = `INSERT INTO order_models (order_id, brand_name, model_number, tag_number, serial_number, cert_number) VALUES (?, ?, ?, ?, ?, ?)`;
 
-    // Loop through each model and insert them
+    // Loop through each model and insert them with the order_id
     addedModels.forEach((model) => {
       db.query(insertModelQuery, [orderId, model.brand, model.modelNumber, model.tagNumber, model.serialNumber, model.certNumber], (err, result) => {
         if (err) {
@@ -182,10 +327,99 @@ app.post('/api/orders', (req, res) => {
       });
     });
 
-    // Send success response after all models are inserted
-    res.json({ message: 'Order and models added successfully' });
+    // Respond with success after all inserts are done
+    res.status(201).json({ message: 'Order and models added successfully' });
   });
 });
+
+
+// app.post('/api/orders', (req, res) => {
+//   const { customerName, salesPerson, orderType, jobNumber, poNumber, addedModels } = req.body;
+
+//   // Validate required fields
+//   if (!customerName || !salesPerson || !orderType || !jobNumber || !poNumber || !addedModels || addedModels.length === 0) {
+//     return res.status(400).json({ error: 'Missing required fields' });
+//   }
+
+//   // Check if the job_number already exists to avoid duplicate entry
+//   const checkJobNumberQuery = 'SELECT job_number FROM orders WHERE job_number = ?';
+  
+//   db.query(checkJobNumberQuery, [jobNumber], (err, result) => {
+//     if (err) {
+//       console.error('Error checking job number:', err);
+//       return res.status(500).json({ error: 'Database error' });
+//     }
+
+//     if (result.length > 0) {
+//       return res.status(400).json({ error: 'Job number already exists' });
+//     }
+
+//     // Insert into `orders` table
+//     const insertOrderQuery = `INSERT INTO orders (customer_name, sales_person, order_type, job_number, po_number) VALUES (?, ?, ?, ?, ?)`;
+
+//     db.query(insertOrderQuery, [customerName, salesPerson, orderType, jobNumber, poNumber], (err, result) => {
+//       if (err) {
+//         console.error('Error inserting order:', err);
+//         return res.status(500).json({ error: 'Error inserting order' });
+//       }
+
+//       const orderId = result.insertId; // Get the newly created order ID
+
+//       // Insert into `order_models` table for each model, using the `job_number` from the `orders` table
+//       const insertModelQuery = `INSERT INTO order_models (job_number, brand_name, model_number, tag_number, serial_number, cert_number) VALUES (?, ?, ?, ?, ?, ?)`;
+
+//       // Loop through each model and insert them
+//       addedModels.forEach((model) => {
+//         db.query(insertModelQuery, [jobNumber, model.brand, model.modelNumber, model.tagNumber, model.serialNumber, model.certNumber], (err, result) => {
+//           if (err) {
+//             console.error('Error inserting model:', err);
+//             return res.status(500).json({ error: 'Error inserting model' });
+//           }
+//         });
+//       });
+
+//       // Respond with success after all inserts are done
+//       res.status(201).json({ message: 'Order and models added successfully' });
+//     });
+//   });
+// });
+
+// app.post('/api/orders', (req, res) => {
+//   const { customerName, salesPerson, orderType, addedModels } = req.body;
+
+//   // Validate required fields
+//   if (!customerName || !salesPerson || !orderType || !addedModels || addedModels.length === 0) {
+//     return res.status(400).json({ error: 'Missing required fields' });
+//   }
+
+//   // Insert into `orders` table
+//   const insertOrderQuery = `INSERT INTO orders (customer_name, sales_person, order_type) VALUES (?, ?, ?)`;
+
+//   db.query(insertOrderQuery, [customerName, salesPerson, orderType], (err, result) => {
+//     if (err) {
+//       console.error('Error inserting order:', err);
+//       return res.status(500).json({ error: 'Error inserting order' });
+//     }
+
+//     const orderId = result.insertId; // Get the newly created order ID
+
+//     // Insert into `order_models` table for each model
+//     const insertModelQuery = `INSERT INTO order_models (order_id, brand_name, model_number, tag_number, serial_number, cert_number) VALUES (?, ?, ?, ?, ?, ?)`;
+
+//     // Loop through each model and insert them
+//     addedModels.forEach((model) => {
+//       db.query(insertModelQuery, [orderId, model.brand, model.modelNumber, model.tagNumber, model.serialNumber, model.certNumber], (err, result) => {
+//         if (err) {
+//           console.error('Error inserting model:', err);
+//           return res.status(500).json({ error: 'Error inserting model' });
+//         }
+//       });
+//     });
+
+//     // Send success response after all models are inserted
+//     res.json({ message: 'Order and models added successfully' });
+//   });
+// });
 
 
 // Route to get sales persons (names) from the accounts table

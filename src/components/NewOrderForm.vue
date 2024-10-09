@@ -65,11 +65,17 @@
             <option value="Purchase">Purchase</option>
           </select>
         </div>
-        <div class="form-group invisible-element">
-          <!-- Invisible element to maintain the 33% width alignment -->
+
+        <!-- Job Number -->
+        <div class="form-group">
+          <label for="jobNumber">Job Number</label>
+          <input type="text" id="jobNumber" v-model="formData.jobNumber" placeholder="Enter Job Number" required />
         </div>
-        <div class="form-group invisible-element">
-          <!-- Invisible element to maintain the 33% width alignment -->
+
+        <!-- PO Number -->
+        <div class="form-group">
+          <label for="poNumber">PO Number</label>
+          <input type="text" id="poNumber" v-model="formData.poNumber" placeholder="Enter PO Number" required />
         </div>
       </div>
 
@@ -128,6 +134,8 @@ export default {
         salesPerson: '',
         orderType: '',
         remark: '',
+        jobNumber: '', // New field for Job Number
+        poNumber: '' // New field for PO Number
       },
       addedModels: [], // To hold the models dynamically added
       customers: [], // Customers from the database
@@ -183,19 +191,7 @@ export default {
           return;
         }
 
-        // // Check if any serial number already exists in the order_models table
-        // for (const model of this.addedModels) {
-        //   const serialCheckResponse = await axios.post('http://localhost:3000/api/check-serial-number', {
-        //     serialNumber: model.serialNumber,
-        //   });
-
-        //   if (serialCheckResponse.data.exists) {
-        //     alert(`Serial number ${model.serialNumber} already exists in the system.`);
-        //     return; // Stop submission if a duplicate serial number is found
-        //   }
-        // }
-
-         // Check if any cert number already exists in the order_models table
+        // Check for duplicate cert numbers
         for (const model of this.addedModels) {
           const certCheckResponse = await axios.post('http://localhost:3000/api/check-cert-number', {
             certNumber: model.certNumber,
@@ -206,11 +202,15 @@ export default {
             return; // Stop submission if a duplicate cert number is found
           }
         }
+
         // If no duplicate serial numbers, proceed with saving the order and models
         const orderData = {
           customerName: this.formData.customerName,
           salesPerson: this.formData.salesPerson,
           orderType: this.formData.orderType,
+          remark: this.formData.remark,
+          jobNumber: this.formData.jobNumber, // New job number field
+          poNumber: this.formData.poNumber, // New PO number field
           addedModels: this.addedModels,
         };
 

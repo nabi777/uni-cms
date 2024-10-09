@@ -11,6 +11,11 @@
         <li @click="navigate('product-management')"><a class="sidebar-link">Product Management</a></li>
         <li @click="navigate('model-management')"><a class="sidebar-link">Model Management</a></li>
         <li @click="navigate('order-management')"><a class="sidebar-link">Order Management</a></li>
+
+        <!-- Only show the Register Account link if the user is 'admin' -->
+        <li v-if="isAdmin" @click="navigate('register-account')">
+          <a class="sidebar-link">Register Account</a>
+        </li>
       </ul>
     </nav>
     <div class="logout-section">
@@ -22,14 +27,28 @@
 <script>
 export default {
   name: 'AppSidebar',
+  data() {
+    return {
+      isAdmin: false, // Admin state
+    };
+  },
   methods: {
     navigate(page) {
       this.$emit('navigate', page);
     },
     logout() {
       console.log('Logout button clicked');
-      // Implement your logout logic here
+      localStorage.removeItem('token'); // Clear the token on logout
+      localStorage.removeItem('username'); // Clear the username on logout
+      this.$router.push('/login');
     },
+  },
+  mounted() {
+    // Check the logged-in user's username from localStorage
+    const username = localStorage.getItem('username');
+    if (username === 'admin') {
+      this.isAdmin = true; // Set isAdmin to true for 'admin' user
+    }
   },
 };
 </script>
@@ -68,17 +87,17 @@ export default {
 }
 
 .sidebar-nav li {
-  padding: 10px 0; /* Adjust vertical padding */
+  padding: 10px 0;
 }
 
 .sidebar-link {
   color: white;
   text-decoration: none;
   display: block;
-  padding: 10px 20px; /* Ensure text is aligned to the left */
+  padding: 10px 20px;
   border-radius: 25px;
   transition: background-color 0.3s ease;
-  text-align: left; /* Align text to the left */
+  text-align: left;
 }
 
 .sidebar-link.active,
@@ -88,13 +107,13 @@ export default {
 
 .logout-section {
   padding: 20px;
-  margin-top: auto; /* Ensure logout button stays at the bottom */
+  margin-top: auto;
 }
 
 .logout-btn {
   width: 100%;
   padding: 10px;
-  background-color: #dc3545; /* Red color for logout */
+  background-color: #dc3545;
   color: white;
   border: none;
   border-radius: 5px;
@@ -103,8 +122,6 @@ export default {
 }
 
 .logout-btn:hover {
-  background-color: #c82333; /* Darker red on hover */
+  background-color: #c82333;
 }
-
-
 </style>
