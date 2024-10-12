@@ -91,7 +91,8 @@ export default {
   methods: {
     async fetchCustomers() {
       try {
-        const response = await axios.get('http://localhost:3000/api/customers');
+        const baseUrl = process.env.VUE_APP_API_BASE_URL
+        const response = await axios.get(`${baseUrl}/api/customers`);
         this.customers = response.data;
         console.log(response.data); // Log the response to inspect the structure
       } catch (error) {
@@ -132,7 +133,8 @@ export default {
     async deleteCustomer(customerId) {
       if (confirm('Are you sure you want to delete this customer?')) {
         try {
-          await axios.delete(`http://localhost:3000/api/customers/${customerId}`);
+          const baseUrl = process.env.VUE_APP_API_BASE_URL
+          await axios.delete(`${baseUrl}/api/customers/${customerId}`);
           this.fetchCustomers(); // Refresh the list after deletion
         } catch (error) {
           console.error('Error deleting customer:', error);

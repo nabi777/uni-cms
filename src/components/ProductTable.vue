@@ -81,7 +81,8 @@ export default {
   methods: {
     async fetchProducts() {
       try {
-        const response = await axios.get('http://localhost:3000/api/products');
+        const baseUrl = process.env.VUE_APP_API_BASE_URL
+        const response = await axios.get(`${baseUrl}/api/products`);
         this.products = response.data; // Update products array with the response data
       } catch (error) {
         console.error('Error fetching products:', error);
@@ -121,7 +122,8 @@ export default {
     async deleteProduct(productId) {
       if (confirm('Are you sure you want to delete this product?')) {
         try {
-          await axios.delete(`http://localhost:3000/api/products/${productId}`);
+          const baseUrl = process.env.VUE_APP_API_BASE_URL
+          await axios.delete(`${baseUrl}/api/products/${productId}`);
           this.fetchProducts(); // Refresh the list after deletion
         } catch (error) {
           console.error('Error deleting product:', error);

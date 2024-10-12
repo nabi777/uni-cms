@@ -54,7 +54,9 @@
     methods: {
       async fetchProductOptions() {
         try {
-          const response = await axios.get('http://localhost:3000/api/products');
+          const baseUrl = process.env.VUE_APP_API_BASE_URL
+
+          const response = await axios.get(`${baseUrl}/api/products`);
           this.productOptions = response.data; // Assuming the response is an array of products
         } catch (error) {
           console.error('Error fetching products:', error);
@@ -65,7 +67,9 @@
       },
       async submitForm() {
         try {
-          const response = await axios.post('http://localhost:3000/api/models', {
+          const baseUrl = process.env.VUE_APP_API_BASE_URL
+
+          const response = await axios.post(`${baseUrl}/api/models`, {
             modelNumber: this.formData.modelNumber,
             brandName: this.formData.brandName,
             productName: this.formData.productName,

@@ -80,7 +80,9 @@ export default {
   methods: {
     async fetchModels() {
       try {
-        const response = await axios.get('http://localhost:3000/api/models');
+        const baseUrl = process.env.VUE_APP_API_BASE_URL
+
+        const response = await axios.get(`${baseUrl}/api/models`);
         this.models = response.data;
       } catch (error) {
         console.error('Error fetching models:', error);
@@ -120,7 +122,8 @@ export default {
     async deleteModel(modelId) {
       if (confirm('Are you sure you want to delete this model?')) {
         try {
-          await axios.delete(`http://localhost:3000/api/models/${modelId}`);
+          const baseUrl = process.env.VUE_APP_API_BASE_URL
+          await axios.delete(`${baseUrl}/api/models/${modelId}`);
           this.fetchModels(); // Refresh the list after deletion
         } catch (error) {
           console.error('Error deleting model:', error);

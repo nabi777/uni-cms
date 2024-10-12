@@ -63,9 +63,11 @@ export default {
       console.log('Submitting the following form data:', this.formData);
 
       try {
+        const baseUrl = process.env.VUE_APP_API_BASE_URL
+
         this.$emit("submit", this.formData); // Emit form data first
 
-        const response = await axios.post('http://localhost:3000/api/accounts', this.formData);
+        const response = await axios.post(`${baseUrl}/api/accounts`, this.formData);
         console.log(response.data.message);
 
         this.closeForm();

@@ -101,7 +101,9 @@ export default {
   methods: {
     async fetchOrders() {
       try {
-        const response = await axios.get('http://localhost:3000/api/orders');
+        const baseUrl = process.env.VUE_APP_API_BASE_URL
+
+        const response = await axios.get(`${baseUrl}/api/orders`);
         this.orders = response.data;
       } catch (error) {
         console.error('Error fetching orders:', error);
@@ -110,7 +112,9 @@ export default {
     async deleteOrder(orderId) {
       if (confirm(`Are you sure you want to delete order with ID: ${orderId}?`)) {
         try {
-          await axios.delete(`http://localhost:3000/api/orders/${orderId}`);
+          const baseUrl = process.env.VUE_APP_API_BASE_URL
+
+          await axios.delete(`${baseUrl}/api/orders/${orderId}`);
           this.orders = this.orders.filter((order) => order.order_id !== orderId);
         } catch (error) {
           console.error('Error deleting order:', error);

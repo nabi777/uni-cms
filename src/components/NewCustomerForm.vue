@@ -63,8 +63,10 @@ export default {
     },
     async submitForm() {
       try {
+        const baseUrl = process.env.VUE_APP_API_BASE_URL
+
         // Make a POST request to your server to call the InsertNewCustomer stored procedure
-        const response = await axios.post('http://localhost:3000/api/customers', {
+        const response = await axios.post(`${baseUrl}/api/customers`, {
           companyName: this.formData.companyName,
           uen: this.formData.uen,
           address: this.formData.address,

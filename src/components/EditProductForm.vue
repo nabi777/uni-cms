@@ -7,7 +7,7 @@
     <form @submit.prevent="submitForm">
       <div class="form-group">
         <label for="productName">Product Name</label>
-        <input type="text" id="productName" v-model="formData.name" required />
+        <input type="text" id="productName" v-model="formData.productName" required />
       </div>
       <div class="form-group">
         <label for="description">Description</label>

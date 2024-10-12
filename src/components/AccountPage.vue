@@ -89,9 +89,16 @@
         @submit="refreshModelTable"
         class="side-form"
       />
+      <!-- Add the NewCalibrationForm and listen for the refresh-orders event -->
+      <NewCalibrationForm
+        v-if="isCalibrationFormVisible"
+        :orderId="selectedOrderId"
+        @close="closeForm"
+        @refresh-orders="refreshOrdersTable"
+      />
     </div>
   </div>
-</template>
+</template>   
 
 <script>
 import AppSidebar from './AppSidebar.vue';
@@ -161,7 +168,12 @@ export default {
       editModelData: null,
     };
   },
+  
   methods: {
+    refreshOrdersTable() {
+      // Call the method that fetches orders in the orders table component
+      this.$refs.OrderTable.fetchOrders();
+    },
     handleSearch(query) {
       this.searchQuery = query;
     },

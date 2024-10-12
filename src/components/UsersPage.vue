@@ -47,8 +47,9 @@
     methods: {
       async createUser() {
         try {
+          const baseUrl = process.env.VUE_APP_API_BASE_URL
           // Call API to create a new user
-          const response = await axios.post('http://localhost:3000/api/register', {
+          const response = await axios.post(`${baseUrl}/api/register`, {
             username: this.formData.username,
             password: this.formData.password
           });
@@ -66,7 +67,8 @@
       },
       async fetchUsers() {
         try {
-          const response = await axios.get('http://localhost:3000/api/users');
+          const baseUrl = process.env.VUE_APP_API_BASE_URL
+          const response = await axios.get(`${baseUrl}/api/users`);
           this.users = response.data;
         } catch (error) {
           console.error('Error fetching users:', error);

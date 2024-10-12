@@ -80,7 +80,8 @@
       // Fetch order details (job_no, po_no, customer_name) when component is mounted
       async fetchOrderDetails() {
         try {
-          const response = await axios.get(`http://localhost:3000/api/orders/${this.orderId}`);
+          const baseUrl = process.env.VUE_APP_API_BASE_URL
+          const response = await axios.get(`${baseUrl}/api/orders/${this.orderId}`);
           const order = response.data.orderDetails;
           
           // Set the form fields based on the order details
@@ -93,8 +94,10 @@
       },
       async submitForm() {
         try {
+          const baseUrl = process.env.VUE_APP_API_BASE_URL
+
           // Send a POST request to the API to insert the email data
-          const response = await axios.post('http://localhost:3000/api/emails', {
+          const response = await axios.post(`${baseUrl}/api/emails`, {
             job_no: this.formData.job_no,
             po_no: this.formData.po_no,
             customer_name: this.formData.customer_name,
@@ -104,7 +107,8 @@
           });
           
           console.log('Email record added successfully:', response.data);
-          this.$emit('submit', this.formData); // Emit the form data to the parent component
+          // this.$emit('submit', this.formData); // Emit the form data to the parent component
+          this.$emit('refresh-orders');
           this.closeForm(); // Close the form after successful submission
         } catch (error) {
           console.error('Error adding email record:', error);

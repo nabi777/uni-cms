@@ -79,7 +79,8 @@ export default {
   methods: {
     async fetchProductOptions() {
       try {
-        const response = await axios.get('http://localhost:3000/api/products');
+        const baseUrl = process.env.VUE_APP_API_BASE_URL
+        const response = await axios.get(`${baseUrl}/api/products`);
         this.productOptions = response.data.map(product => product.name); // Ensure product names are added to the dropdown
       } catch (error) {
         console.error('Error fetching product options:', error);
@@ -90,10 +91,11 @@ export default {
     },
     async submitForm() {
       try {
+        const baseUrl = process.env.VUE_APP_API_BASE_URL
         console.log('Model ID being updated:', this.formData.modelId);
         
         // Make the API call to update the model using the modelId
-        const response = await axios.put(`http://localhost:3000/api/models/${this.formData.modelId}`, this.formData);
+        const response = await axios.put(`${baseUrl}/api/models/${this.formData.modelId}`, this.formData);
         console.log('Model updated successfully:', response.data);
 
         this.$emit('submit', this.formData); 

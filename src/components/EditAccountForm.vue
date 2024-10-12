@@ -67,13 +67,14 @@ export default {
     },
     async submitForm() {
       try {
+        const baseUrl = process.env.VUE_APP_API_BASE_URL
         // Call API to update account using stored procedure
-        const response = await axios.put(`http://localhost:3000/api/accounts/${this.formData.id}`, {
+        const response = await axios.put(`${baseUrl}/api/accounts/${this.formData.id}`, {
           name: this.formData.name,
           email: this.formData.email,
           status: this.formData.status,
           department: this.formData.department,
-          mobile_no: this.formData.mobile,
+          mobile_no: this.formData.mobile_no,
         });
 
         console.log('Account updated successfully:', response.data);

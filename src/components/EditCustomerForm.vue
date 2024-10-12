@@ -59,9 +59,21 @@ export default {
       this.$emit('close');
     },
     async submitForm() {
+      const requiredFields = ['company_name', 'address', 'contact_name', 'email'];
+      const missingFields = requiredFields.filter(field => !this.formData[field]);
+
+      if (missingFields.length > 0) {
+        console.log('Missing fields:', missingFields);  // Log missing fields to the console
+        alert(`The following fields are missing: ${missingFields.join(', ')}`);
+        return;
+      }
+
       try {
+        // Log the data being passed to the API
+      console.log('Submitting the following customer data:', this.formData);
         // API call to update customer data
-        const response = await axios.put(`http://localhost:3000/api/customers/${this.formData.id}`, this.formData);
+        const baseUrl = process.env.VUE_APP_API_BASE_URL
+        const response = await axios.put(`${baseUrl}/api/customers/${this.formData.id}`, this.formData);
         console.log('Customer updated successfully:', response.data);
 
         // Emit the form data after successful submission

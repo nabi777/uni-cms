@@ -41,7 +41,8 @@ export default {
       this.isLoading = true; // Start loading
 
       try {
-        const response = await axios.post('http://localhost:3000/api/login', {
+        const baseUrl = process.env.VUE_APP_API_BASE_URL
+        const response = await axios.post(`${baseUrl}/api/login`, {
           username: this.username,
           password: this.password,
         });

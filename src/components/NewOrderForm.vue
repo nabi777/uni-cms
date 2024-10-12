@@ -147,7 +147,9 @@ export default {
   methods: {
     async fetchCustomers() {
       try {
-        const response = await axios.get('http://localhost:3000/api/customer-names');
+        const baseUrl = process.env.VUE_APP_API_BASE_URL
+
+        const response = await axios.get(`${baseUrl}/api/customer-names`);
         this.customers = response.data;
       } catch (error) {
         console.error('Error fetching customers:', error);
@@ -155,7 +157,9 @@ export default {
     },
     async fetchBrands() {
       try {
-        const response = await axios.get('http://localhost:3000/api/brands');
+        const baseUrl = process.env.VUE_APP_API_BASE_URL
+
+        const response = await axios.get(`${baseUrl}/api/brands`);
         this.brands = response.data;
       } catch (error) {
         console.error('Error fetching brands:', error);
@@ -164,7 +168,8 @@ export default {
     async fetchModelNumbers() {
       if (this.formData.brand) {
         try {
-          const response = await axios.get(`http://localhost:3000/api/models/${this.formData.brand}`);
+          const baseUrl = process.env.VUE_APP_API_BASE_URL
+          const response = await axios.get(`${baseUrl}/api/models/${this.formData.brand}`);
           this.models = response.data;
         } catch (error) {
           console.error('Error fetching models:', error);
@@ -175,7 +180,9 @@ export default {
     },
     async fetchSalesPersons() {
       try {
-        const response = await axios.get('http://localhost:3000/api/accounts-name');
+        const baseUrl = process.env.VUE_APP_API_BASE_URL
+
+        const response = await axios.get(`${baseUrl}/api/accounts-name`);
         this.salesPersons = response.data;
       } catch (error) {
         console.error('Error fetching sales persons:', error);
@@ -186,6 +193,7 @@ export default {
     },
     async submitForm() {
       try {
+        const baseUrl = process.env.VUE_APP_API_BASE_URL
         if (this.addedModels.length === 0) {
           alert('Please add at least one model.');
           return;
@@ -193,7 +201,7 @@ export default {
 
         // Check for duplicate cert numbers
         for (const model of this.addedModels) {
-          const certCheckResponse = await axios.post('http://localhost:3000/api/check-cert-number', {
+          const certCheckResponse = await axios.post(`${baseUrl}/api/check-cert-number`, {
             certNumber: model.certNumber,
           });
 
@@ -214,7 +222,7 @@ export default {
           addedModels: this.addedModels,
         };
 
-        const response = await axios.post('http://localhost:3000/api/orders', orderData);
+        const response = await axios.post(`${baseUrl}/api/orders`, orderData);
         console.log('Order saved successfully:', response.data);
         this.$emit('submit', this.formData);
         this.closeForm();

@@ -9,19 +9,11 @@ const bcrypt = require('bcrypt');
 app.use(cors());
 app.use(express.json()); // Middleware to parse JSON bodies
 
-// Create MySQL connection pool with connection management
-const pool = mysql.createPool({
-  host: 'database-1.cr4iuy8yuyzn.ap-southeast-1.rds.amazonaws.com', // or your database host if different
-  user: 'admin',
-  password: '1B2Lj1wbKAJJ5MSAxPAs',
-  database: 'db',
-  // host: 'localhost', 
-  // user: 'root', 
-  // password: '0493', 
-  // database: 'unitest_cms', 
-  waitForConnections: true,
-  connectionLimit: 10,
-  queueLimit: 0,
+const db = mysql.createConnection({
+  host: 'localhost', // or your database host if different
+  user: 'root',
+  password: '0493',
+  database: 'unitest_cms',
 });
 
 // const db = mysql.createConnection({
@@ -31,6 +23,13 @@ const pool = mysql.createPool({
 //   database: 'db',
 // });
 
+db.connect((err) => {
+  if (err) {
+    console.error('Error connecting to the database:', err);
+    return;
+  }
+  console.log('MySQL Connected...');
+});
 
 // insert new user
 const saltRounds = 10; // Define saltRounds for bcrypt hashing
@@ -52,7 +51,7 @@ app.post('/api/register', (req, res) => {
     // Insert user into the `users` table
     const insertUserQuery = `INSERT INTO users (username, password) VALUES (?, ?)`;
 
-    pool.query(insertUserQuery, [username, hashedPassword], (err, result) => {
+    db.query(insertUserQuery, [username, hashedPassword], (err, result) => {
       if (err) {
         console.error('Error inserting user:', err);
         return res.status(500).json({ error: 'Error inserting user' });
@@ -67,7 +66,7 @@ app.post('/api/register', (req, res) => {
 // get users
 app.get('/api/users', (req, res) => {
   const query = 'SELECT id, username FROM users'; // Fetch only id and username
-  pool.query(query, (err, results) => {
+  db.query(query, (err, results) => {
     if (err) {
       return res.status(500).json({ error: 'Error fetching users' });
     }
@@ -85,7 +84,7 @@ app.post('/api/login', (req, res) => {
   // Query to fetch the user by username
   const userQuery = `SELECT * FROM users WHERE username = ?`;
 
-  pool.query(userQuery, [username], (err, results) => {
+  db.query(userQuery, [username], (err, results) => {
     if (err) {
       return res.status(500).json({ error: 'Database error' });
     }
@@ -117,7 +116,7 @@ app.post('/api/login', (req, res) => {
 });
 
 
-// Insert into `emails` table and update `orders` status
+// Insert into `emails` table
 app.post('/api/emails', (req, res) => {
   const { job_no, po_no, customer_name, cal_date, due_date, to_email_date } = req.body;
 
@@ -126,61 +125,20 @@ app.post('/api/emails', (req, res) => {
     return res.status(400).json({ error: 'Missing required fields' });
   }
 
-  // Start transaction
-  pool.getConnection((err, connection) => {
+  // Insert query to `emails` table
+  const insertEmailQuery = `INSERT INTO emails (job_no, po_no, customer_name, cal_date, due_date, to_email_date) VALUES (?, ?, ?, ?, ?, ?)`;
+
+  // Execute the query
+  db.query(insertEmailQuery, [job_no, po_no, customer_name, cal_date, due_date, to_email_date], (err, result) => {
     if (err) {
-      console.error('Error getting database connection:', err);
-      return res.status(500).json({ error: 'Database connection error' });
+      console.error('Error inserting email data:', err);
+      return res.status(500).json({ error: 'Error inserting email data' });
     }
 
-    // Begin transaction
-    connection.beginTransaction((err) => {
-      if (err) {
-        connection.release();
-        console.error('Error starting transaction:', err);
-        return res.status(500).json({ error: 'Transaction error' });
-      }
-
-      // Insert query to `emails` table
-      const insertEmailQuery = `INSERT INTO emails (job_no, po_no, customer_name, cal_date, due_date, to_email_date) VALUES (?, ?, ?, ?, ?, ?)`;
-
-      connection.query(insertEmailQuery, [job_no, po_no, customer_name, cal_date, due_date, to_email_date], (err, result) => {
-        if (err) {
-          connection.rollback(() => connection.release());
-          console.error('Error inserting email data:', err);
-          return res.status(500).json({ error: 'Error inserting email data' });
-        }
-
-        // Update the `orders` table to change status to "Completed"
-        const updateOrderStatusQuery = `UPDATE orders SET status = 'Completed' WHERE job_number = ?`;
-
-        connection.query(updateOrderStatusQuery, [job_no], (err, updateResult) => {
-          if (err) {
-            connection.rollback(() => connection.release());
-            console.error('Error updating order status:', err);
-            return res.status(500).json({ error: 'Error updating order status' });
-          }
-
-          // Commit transaction
-          connection.commit((err) => {
-            if (err) {
-              connection.rollback(() => connection.release());
-              console.error('Error committing transaction:', err);
-              return res.status(500).json({ error: 'Transaction commit error' });
-            }
-
-            // Release the connection back to the pool
-            connection.release();
-
-            // Respond with success message
-            res.status(201).json({ message: 'Email record added and order status updated to "Completed" successfully' });
-          });
-        });
-      });
-    });
+    // Respond with success message
+    res.status(201).json({ message: 'Email record added successfully' });
   });
 });
-
 
 // Update Order by ID
 app.put('/api/orders/:orderId', (req, res) => {
@@ -191,7 +149,7 @@ app.put('/api/orders/:orderId', (req, res) => {
   const updateOrderSql = `UPDATE orders SET customer_name = ?, sales_person = ?, order_type = ? WHERE order_id = ?`;
   const updateOrderData = [customerName, salesPerson, orderType, orderId];
 
-  pool.query(updateOrderSql, updateOrderData, (err, results) => {
+  db.query(updateOrderSql, updateOrderData, (err, results) => {
     if (err) {
       console.error('Error updating order:', err);
       return res.status(500).json({ message: 'Error updating order' });
@@ -199,7 +157,7 @@ app.put('/api/orders/:orderId', (req, res) => {
 
     // Update models in the database (assuming models are handled in a separate table)
     const deleteOldModelsSql = `DELETE FROM order_models WHERE order_id = ?`;
-    pool.query(deleteOldModelsSql, [orderId], (err) => {
+    db.query(deleteOldModelsSql, [orderId], (err) => {
       if (err) {
         console.error('Error deleting old models:', err);
         return res.status(500).json({ message: 'Error deleting old models' });
@@ -209,7 +167,7 @@ app.put('/api/orders/:orderId', (req, res) => {
       const insertModelsSql = `INSERT INTO order_models (order_id, brand_name, model_number, tag_number, serial_number, cert_number) VALUES ?`;
       const modelData = addedModels.map(model => [orderId, model.brand, model.modelNumber, model.tagNumber, model.serialNumber, model.certNumber]);
 
-      pool.query(insertModelsSql, [modelData], (err) => {
+      db.query(insertModelsSql, [modelData], (err) => {
         if (err) {
           console.error('Error inserting models:', err);
           return res.status(500).json({ message: 'Error inserting models' });
@@ -230,7 +188,7 @@ app.get('/api/orders/:orderId', (req, res) => {
   const orderQuery = `SELECT * FROM orders WHERE order_id = ?`;
   const modelQuery = `SELECT * FROM order_models WHERE order_id = ?`;
 
-  pool.query(orderQuery, [orderId], (err, orderResults) => {
+  db.query(orderQuery, [orderId], (err, orderResults) => {
     if (err) {
       console.error('Error fetching order:', err);
       return res.status(500).send('Error fetching order');
@@ -240,7 +198,7 @@ app.get('/api/orders/:orderId', (req, res) => {
       return res.status(404).send('Order not found');
     }
 
-    pool.query(modelQuery, [orderId], (err, modelResults) => {
+    db.query(modelQuery, [orderId], (err, modelResults) => {
       if (err) {
         console.error('Error fetching models:', err);
         return res.status(500).send('Error fetching models');
@@ -267,7 +225,7 @@ app.delete('/api/orders/:id', (req, res) => {
 
   const sql = 'CALL DeleteOrderById(?)';
 
-  pool.query(sql, [orderId], (err, results) => {
+  db.query(sql, [orderId], (err, results) => {
     if (err) {
       console.error('Error deleting order:', err);
       return res.status(500).send('Server error');
@@ -286,7 +244,7 @@ app.delete('/api/orders/:id', (req, res) => {
 app.get('/api/orders', (req, res) => {
   const sql = 'CALL GetAllOrders()'; // Make sure this stored procedure exists in the database
   
-  pool.query(sql, (err, results) => {
+  db.query(sql, (err, results) => {
     if (err) {
       console.error('Error fetching orders:', err); // Log the error
       res.status(500).send('Server error');
@@ -305,7 +263,7 @@ app.post('/api/check-cert-number', (req, res) => {
   }
 
   const sql = 'SELECT COUNT(*) AS count FROM order_models WHERE cert_number = ?';
-  pool.query(sql, [certNumber], (err, results) => {
+  db.query(sql, [certNumber], (err, results) => {
     if (err) {
       console.error('Error checking cert number:', err);
       return res.status(500).send('Server error');
@@ -330,7 +288,7 @@ app.post('/api/orders', (req, res) => {
   // Insert into `orders` table
   const insertOrderQuery = `INSERT INTO orders (customer_name, sales_person, order_type, job_number, po_number) VALUES (?, ?, ?, ?, ?)`;
 
-  pool.query(insertOrderQuery, [customerName, salesPerson, orderType, jobNumber, poNumber], (err, result) => {
+  db.query(insertOrderQuery, [customerName, salesPerson, orderType, jobNumber, poNumber], (err, result) => {
     if (err) {
       console.error('Error inserting order:', err);
       return res.status(500).json({ error: 'Error inserting order' });
@@ -343,7 +301,7 @@ app.post('/api/orders', (req, res) => {
 
     // Loop through each model and insert them with the order_id
     addedModels.forEach((model) => {
-      pool.query(insertModelQuery, [orderId, model.brand, model.modelNumber, model.tagNumber, model.serialNumber, model.certNumber], (err, result) => {
+      db.query(insertModelQuery, [orderId, model.brand, model.modelNumber, model.tagNumber, model.serialNumber, model.certNumber], (err, result) => {
         if (err) {
           console.error('Error inserting model:', err);
           return res.status(500).json({ error: 'Error inserting model' });
@@ -360,7 +318,7 @@ app.post('/api/orders', (req, res) => {
 app.get('/api/accounts-name', (req, res) => {
   const sql = 'SELECT id, name FROM accounts';
   
-  pool.query(sql, (err, results) => {
+  db.query(sql, (err, results) => {
     if (err) {
       console.error('Error fetching sales persons:', err);
       res.status(500).send('Server error');
@@ -375,7 +333,7 @@ app.get('/api/models/:brandName', (req, res) => {
   const brandName = req.params.brandName;
   const sql = 'SELECT model_number FROM models WHERE brand_name = ?';
 
-  pool.query(sql, [brandName], (err, results) => {
+  db.query(sql, [brandName], (err, results) => {
     if (err) {
       console.error('Error fetching models:', err);
       res.status(500).send('Server error');
@@ -390,7 +348,7 @@ app.get('/api/models/:brandName', (req, res) => {
 app.get('/api/brands', (req, res) => {
   const sql = 'SELECT DISTINCT brand_name FROM models';
 
-  pool.query(sql, (err, results) => {
+  db.query(sql, (err, results) => {
     if (err) {
       console.error('Error fetching brand names:', err);
       res.status(500).send('Server error');
@@ -404,7 +362,7 @@ app.get('/api/brands', (req, res) => {
 app.get('/api/customer-names', (req, res) => {
   const sql = 'SELECT id, company_name FROM customers';
   
-  pool.query(sql, (err, results) => {
+  db.query(sql, (err, results) => {
     if (err) {
       console.error('Error fetching customer names:', err);
       res.status(500).send('Server error');
@@ -418,7 +376,7 @@ app.get('/api/customer-names', (req, res) => {
 // Get all accounts
 app.get('/api/accounts', (req, res) => {
   const sql = 'CALL GetAllAccounts()';
-  pool.query(sql, (err, results) => {
+  db.query(sql, (err, results) => {
     if (err) {
       console.error('Error executing query:', err);
       res.status(500).send('Server error');
@@ -438,7 +396,7 @@ app.post('/api/accounts', (req, res) => {
   }
 
   const sql = `CALL InsertNewAccount(?, ?, ?, ?, ?)`;
-  pool.query(sql, [name, email, status, department, mobile], (err, results) => {
+  db.query(sql, [name, email, status, department, mobile], (err, results) => {
     if (err) {
       console.error('Error executing query:', err);
       return res.status(500).send('Server error');
@@ -452,7 +410,7 @@ app.post('/api/accounts', (req, res) => {
 // Get all customers
 app.get('/api/customers', (req, res) => {
   const sql = 'CALL GetAllCustomers()';
-  pool.query(sql, (err, results) => {
+  db.query(sql, (err, results) => {
     if (err) {
       console.error('Error executing query:', err);
       res.status(500).send('Server error');
@@ -472,7 +430,7 @@ app.post('/api/customers', (req, res) => {
   }
 
   const sql = `CALL InsertNewCustomer(?, ?, ?, ?, ?, ?)`;
-  pool.query(sql, [companyName, uen, address, contactName, phoneNumber, contactEmail], (err, results) => {
+  db.query(sql, [companyName, uen, address, contactName, phoneNumber, contactEmail], (err, results) => {
     if (err) {
       console.error('Error executing query:', err);
       return res.status(500).send('Server error');
@@ -488,7 +446,7 @@ app.delete('/api/customers/:id', (req, res) => {
   const customerId = req.params.id;
 
   const sql = 'CALL DeleteCustomerById(?)';
-  pool.query(sql, [customerId], (err, results) => {
+  db.query(sql, [customerId], (err, results) => {
     if (err) {
       console.error('Error deleting customer:', err);
       return res.status(500).send('Server error');
@@ -509,7 +467,7 @@ app.put('/api/customers/:id', (req, res) => {
   }
 
   const sql = 'CALL UpdateCustomer(?, ?, ?, ?, ?, ?, ?)';
-  pool.query(sql, [customerId, companyName, uen, address, contactName, phoneNumber, email], (err, results) => {
+  db.query(sql, [customerId, companyName, uen, address, contactName, phoneNumber, email], (err, results) => {
     if (err) {
       console.error('Error updating customer:', err);
       return res.status(500).send('Server error');
@@ -529,7 +487,7 @@ app.put('/api/accounts/:id', (req, res) => {
 
   const query = `CALL EditAccount(?, ?, ?, ?, ?, ?)`;
 
-  pool.query(query, [accountId, name, email, status, department, mobile_no], (err, result) => {
+  db.query(query, [accountId, name, email, status, department, mobile_no], (err, result) => {
     if (err) {
       console.error('Error executing EditAccount procedure:', err);
       return res.status(500).json({ error: 'Database error' });
@@ -543,7 +501,7 @@ app.put('/api/accounts/:id', (req, res) => {
 app.get('/api/products', (req, res) => {
   const query = 'CALL GetAllProducts()'; // SQL query to call the stored procedure
 
-  pool.query(query, (err, results) => {
+  db.query(query, (err, results) => {
     if (err) {
       console.error('Error retrieving products:', err);
       return res.status(500).json({ error: 'Database error' });
@@ -566,7 +524,7 @@ app.post('/api/products', (req, res) => {
   }
 
   const sql = 'CALL InsertNewProduct(?, ?)';
-  pool.query(sql, [name, description], (err, results) => {
+  db.query(sql, [name, description], (err, results) => {
     if (err) {
       console.error('Error inserting product:', err);
       return res.status(500).send('Server error');
@@ -584,7 +542,7 @@ app.delete('/api/products/:id', (req, res) => {
   // Call the DeleteProduct stored procedure
   const sql = 'CALL DeleteProduct(?)';
 
-  pool.query(sql, [productId], (err, results) => {
+  db.query(sql, [productId], (err, results) => {
     if (err) {
       console.error('Error deleting product:', err);
       return res.status(500).send('Server error');
@@ -605,7 +563,7 @@ app.put('/api/products/:id', (req, res) => {
 
   // Call the stored procedure to update the product
   const sql = `CALL EditProduct(?, ?, ?)`;
-  pool.query(sql, [productId, name, description], (err, results) => {
+  db.query(sql, [productId, name, description], (err, results) => {
     if (err) {
       console.error('Error updating product:', err);
       return res.status(500).json({ error: 'Server error' });
@@ -619,7 +577,7 @@ app.delete('/api/accounts/:id', (req, res) => {
   const accountId = req.params.id; // Get account ID from request URL
 
   const sql = 'CALL DeleteAccountById(?)'; // Call stored procedure
-  pool.query(sql, [accountId], (err, results) => {
+  db.query(sql, [accountId], (err, results) => {
     if (err) {
       console.error('Error executing stored procedure:', err);
       return res.status(500).send('Server error');
@@ -638,7 +596,7 @@ app.delete('/api/accounts/:id', (req, res) => {
 app.get('/api/models', (req, res) => {
   const sql = 'CALL GetAllModels()';
   
-  pool.query(sql, (err, results) => {
+  db.query(sql, (err, results) => {
     if (err) {
       console.error('Error fetching models:', err);
       res.status(500).send('Server error');
@@ -653,7 +611,7 @@ app.delete('/api/models/:id', (req, res) => {
   const modelId = req.params.id; // Get model ID from the URL
 
   const sql = 'CALL DeleteModelById(?)'; // SQL query to call the stored procedure
-  pool.query(sql, [modelId], (err, results) => {
+  db.query(sql, [modelId], (err, results) => {
     if (err) {
       console.error('Error deleting model:', err);
       return res.status(500).send('Server error');
@@ -679,7 +637,7 @@ app.put('/api/models/:id', (req, res) => {
   }
 
   const sql = 'CALL UpdateModel(?, ?, ?, ?)';
-  pool.query(sql, [modelId, modelNumber, brandName, modifiedDateTime], (err, results) => {
+  db.query(sql, [modelId, modelNumber, brandName, modifiedDateTime], (err, results) => {
     if (err) {
       console.error('Error updating model:', err);
       return res.status(500).json({ error: 'Database error' });
@@ -699,7 +657,7 @@ app.post('/api/models', (req, res) => {
   // Call the stored procedure to add a new model
   const sql = `CALL AddNewModel(?, ?, NOW())`;
 
-  pool.query(sql, [modelNumber, brandName], (err, results) => {
+  db.query(sql, [modelNumber, brandName], (err, results) => {
     if (err) {
       console.error('Error executing AddNewModel procedure:', err);
       return res.status(500).json({ error: 'Database error' });
@@ -714,7 +672,7 @@ app.post('/api/models', (req, res) => {
 app.get('/api/products', (req, res) => {
   const sql = 'SELECT DISTINCT name FROM products';
   
-  pool.query(sql, (err, results) => {
+  db.query(sql, (err, results) => {
     if (err) {
       console.error('Error fetching product names:', err);
       res.status(500).send('Server error');

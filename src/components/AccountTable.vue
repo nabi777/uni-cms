@@ -87,9 +87,9 @@ export default {
   methods: {
     async fetchAccounts() {
       try {
-        const response = await axios.get('http://localhost:3000/api/accounts');
+        const baseUrl = process.env.VUE_APP_API_BASE_URL;
+        const response = await axios.get(`${baseUrl}/api/accounts`);
         this.accounts = response.data;
-        console.log(response.data); // Log the response to inspect the structure
       } catch (error) {
         console.error('Error fetching accounts:', error);
       }
@@ -128,7 +128,8 @@ export default {
     async deleteAccount(accountId) {
       if (confirm('Are you sure you want to delete this account?')) {
         try {
-          await axios.delete(`http://localhost:3000/api/accounts/${accountId}`);
+          const baseUrl = process.env.VUE_APP_API_BASE_URL;
+          await axios.delete(`${baseUrl}/api/accounts/${accountId}`);
           this.fetchAccounts(); // Re-fetch the accounts after deletion
         } catch (error) {
           console.error('Error deleting account:', error);

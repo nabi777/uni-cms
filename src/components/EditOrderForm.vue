@@ -161,7 +161,8 @@ export default {
   methods: {
     async populateOrderForm(orderData) {
       try {
-        const response = await axios.get(`http://localhost:3000/api/orders/${orderData.order_id}`);
+        const baseUrl = process.env.VUE_APP_API_BASE_URL
+        const response = await axios.get(`${baseUrl}/api/orders/${orderData.order_id}`);
         const orderDetails = response.data.orderDetails;
 
         // Populate form data
@@ -193,7 +194,8 @@ export default {
     },
     async fetchCustomers() {
       try {
-        const response = await axios.get('http://localhost:3000/api/customer-names');
+        const baseUrl = process.env.VUE_APP_API_BASE_URL
+        const response = await axios.get(`${baseUrl}/api/customer-names`);
         this.customers = response.data;
       } catch (error) {
         console.error('Error fetching customers:', error);
@@ -201,7 +203,8 @@ export default {
     },
     async fetchBrands() {
       try {
-        const response = await axios.get('http://localhost:3000/api/brands');
+        const baseUrl = process.env.VUE_APP_API_BASE_URL
+        const response = await axios.get(`${baseUrl}/api/brands`);
         this.brands = response.data;
       } catch (error) {
         console.error('Error fetching brands:', error);
@@ -210,7 +213,8 @@ export default {
     async fetchModelNumbers() {
       if (this.formData.brand) {
         try {
-          const response = await axios.get(`http://localhost:3000/api/models/${this.formData.brand}`);
+          const baseUrl = process.env.VUE_APP_API_BASE_URL
+          const response = await axios.get(`${baseUrl}/api/models/${this.formData.brand}`);
           this.models = response.data;
         } catch (error) {
           console.error('Error fetching models:', error);
@@ -221,7 +225,8 @@ export default {
     },
     async fetchSalesPersons() {
       try {
-        const response = await axios.get('http://localhost:3000/api/accounts-name');
+        const baseUrl = process.env.VUE_APP_API_BASE_URL
+        const response = await axios.get(`${baseUrl}/api/accounts-name`);
         this.salesPersons = response.data;
       } catch (error) {
         console.error('Error fetching sales persons:', error);
@@ -232,6 +237,7 @@ export default {
     },
     async submitForm() {
       try {
+        const baseUrl = process.env.VUE_APP_API_BASE_URL
         if (this.addedModels.length === 0) {
           alert('Please add at least one model.');
           return;
@@ -247,7 +253,7 @@ export default {
           addedModels: this.addedModels
         };
 
-        await axios.put(`http://localhost:3000/api/orders/${this.orderData.order_id}`, orderData);
+        await axios.put(`${baseUrl}/api/orders/${this.orderData.order_id}`, orderData);
         this.$emit('submit', this.formData);
         this.closeForm();
       } catch (error) {

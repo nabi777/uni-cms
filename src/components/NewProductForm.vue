@@ -44,7 +44,8 @@ export default {
     async submitForm() {
       try {
         // Make an API call to create a new product
-        const response = await axios.post('http://localhost:3000/api/products', {
+        const baseUrl = process.env.VUE_APP_API_BASE_URL
+        const response = await axios.post(`${baseUrl}/api/products`, {
           name: this.formData.productName,
           description: this.formData.description || null, // Optional field
         });
