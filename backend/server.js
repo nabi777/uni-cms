@@ -31,6 +31,258 @@ const pool = mysql.createPool({
 //   database: 'db',
 // });
 
+// // API endpoint to update the void_status
+// app.put('/api/:tableName/void/:cert_number', (req, res) => {
+//   const { tableName, cert_number } = req.params;
+//   const { void_status } = req.body; // We expect a field like { "void_status": "Voided" }
+
+//   // Ensure the table name is valid and matches one of your allowed tables
+//   const allowedTables = [
+//     'Singlas_Electrical',
+//     'Singlas_Temperature',
+//     'Singlas_Pressure',
+//     'Non_Singlas_Electrical',
+//     'Non_Singlas_Temperature',
+//     'Non_Singlas_Pressure'
+//   ];
+
+//   if (!allowedTables.includes(tableName)) {
+//     return res.status(400).json({ message: 'Invalid table name' });
+//   }
+
+//   // Update the void_status field in the selected table
+//   const query = `
+//     UPDATE ?? 
+//     SET void_status = ? 
+//     WHERE cert_number = ?
+//   `;
+  
+//   db.query(query, [tableName, void_status, cert_number], (err, result) => {
+//     if (err) {
+//       console.error('Error updating certification status:', err);
+//       return res.status(500).json({ message: 'Error updating certification status' });
+//     }
+
+//     if (result.affectedRows > 0) {
+//       return res.status(200).json({ message: 'Certification status updated successfully' });
+//     } else {
+//       return res.status(404).json({ message: 'Certification not found' });
+//     }
+//   });
+// });
+
+// Helper function to map the certificate type to the actual database table name
+function getTableName(certificateType) {
+  switch (certificateType) {
+    case 'Singlas Electrical':
+      return 'Singlas_Electrical';
+    case 'Singlas Temperature':
+      return 'Singlas_Temperature';
+    case 'Singlas Pressure':
+      return 'Singlas_Pressure';
+    case 'Electrical':
+      return 'Non_Singlas_Electrical';
+    case 'Temperature':
+      return 'Non_Singlas_Temperature';
+    case 'Pressure':
+      return 'Non_Singlas_Pressure';
+    default:
+      throw new Error('Invalid certificate type');
+  }
+}
+app.post('/api/certifications', async (req, res) => {
+  const {
+    certificateType,
+    jobNumber,
+    customerName,
+    serialNumber,
+    brandName,
+    modelNumber,
+    testRange = null, // Allow null if not provided
+    calibratedBy = 'Ryan', // Default value if empty
+    cert_number
+  } = req.body;
+
+  // Function to map certificate type to table name
+  function getTableName(certificateType) {
+    switch (certificateType) {
+      case 'Singlas Electrical':
+        return 'Singlas_Electrical';
+      case 'Singlas Temperature':
+        return 'Singlas_Temperature';
+      case 'Singlas Pressure':
+        return 'Singlas_Pressure';
+      case 'Electrical':
+        return 'Non_Singlas_Electrical';
+      case 'Temperature':
+        return 'Non_Singlas_Temperature';
+      case 'Pressure':
+        return 'Non_Singlas_Pressure';
+      default:
+        throw new Error('Invalid certificate type');
+    }
+  }
+
+  let tableName;
+  try {
+    tableName = getTableName(certificateType); // Get the correct table name
+  } catch (error) {
+    return res.status(400).json({ error: error.message });
+  }
+
+  try {
+    const query = `INSERT INTO ${tableName} (cert_number, job_number, customer_name, serial_number, brand_name, model_number, reading_range, calibrated_by, modified_date_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`;
+    
+    // Use pool to perform the query
+    pool.query(query, [cert_number, jobNumber, customerName, serialNumber, brandName, modelNumber, testRange, calibratedBy], (error, results) => {
+      if (error) {
+        console.error('Error inserting certification:', error);
+        return res.status(500).json({ error: 'Failed to create certification' });
+      }
+      res.status(201).json({ message: 'Certification created successfully' });
+    });
+  } catch (error) {
+    console.error('Unexpected error:', error);
+    res.status(500).json({ error: 'Unexpected error occurred' });
+  }
+});
+
+// // Insert a new certificate into the database based on certificate type
+// app.post('/api/certifications', (req, res) => {
+//   const { certificateType, cert_number, jobNumber, customerName, serialNumber, brandName, modelNumber, testRange, calibratedBy } = req.body;
+  
+//   // Replace spaces with underscores in the table name
+//   const formattedTable = certificateType.replace(/\s/g, '_');
+  
+//   // Insert query based on certificate type
+//   const query = `INSERT INTO ?? (cert_number, job_number, customer_name, serial_number, brand_name, model_number, reading_range, calibrated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
+//   const values = [
+//     formattedTable,
+//     cert_number,
+//     jobNumber,
+//     customerName,
+//     serialNumber,
+//     brandName,
+//     modelNumber,
+//     testRange || null, // Allow null for testRange
+//     calibratedBy || 'Ryan' // Allow null
+//   ];
+  
+//   pool.query(query, values, (error, results) => {
+//     if (error) {
+//       return res.status(500).json({ error: `Failed to insert into ${formattedTable}.` });
+//     }
+//     res.json({ success: true, id: results.insertId });
+//   });
+// });
+
+// Endpoint to fetch the latest certificate
+app.get('/api/latest-certificate', async (req, res) => {
+  const { tableName: certType } = req.query;
+  const tableName = getTableName(certType); // Map to actual table name
+
+  try {
+    const query = `SELECT cert_number FROM ${mysql.escapeId(tableName)} ORDER BY id DESC LIMIT 1`;
+    pool.query(query, (error, results) => {
+      if (error) {
+        console.error('Error fetching the latest certificate:', error);
+        return res.status(500).json({ error: 'Failed to retrieve latest certificate' });
+      }
+
+      const latestCert = results.length ? results[0].cert_number : null;
+      res.json({ latestCert });
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// // Endpoint to insert a new certification record
+// app.post('/api/certifications', async (req, res) => {
+//   const { certificateType, jobNumber, customerName, serialNumber, brandName, modelNumber, testRange, calibratedBy, cert_number } = req.body;
+//   const tableName = getTableName(certificateType);
+
+//   const query = `
+//     INSERT INTO ${mysql.escapeId(tableName)} (cert_number, job_number, customer_name, serial_number, brand_name, model_number, reading_range, calibrated_by, modified_date_time)
+//     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+//   `;
+
+//   pool.query(query, [cert_number, jobNumber, customerName, serialNumber, brandName, modelNumber, testRange, calibratedBy], (error, results) => {
+//     if (error) {
+//       console.error('Error inserting new certification:', error);
+//       return res.status(500).json({ error: 'Failed to insert certification' });
+//     }
+//     res.json({ message: 'Certification inserted successfully', id: results.insertId });
+//   });
+// });
+
+// route for cert table
+// Define app.get routes for each table
+app.get('/api/Singlas_Electrical', (req, res) => {
+  pool.query('SELECT * FROM Singlas_Electrical ORDER BY id DESC', (error, results) => {
+    if (error) {
+      console.error('Error fetching data from Singlas_Electrical:', error);
+      res.status(500).json({ error: 'Failed to retrieve data from Singlas_Electrical' });
+    } else {
+      res.json(results);
+    }
+  });
+});
+
+app.get('/api/Singlas_Temperature', (req, res) => {
+  pool.query('SELECT * FROM Singlas_Temperature ORDER BY id DESC', (error, results) => {
+    if (error) {
+      console.error('Error fetching data from Singlas_Temperature:', error);
+      res.status(500).json({ error: 'Failed to retrieve data' });
+    } else {
+      res.json(results);
+    }
+  });
+});
+
+app.get('/api/Singlas_Pressure', (req, res) => {
+  pool.query('SELECT * FROM Singlas_Pressure ORDER BY id DESC', (error, results) => {
+    if (error) {
+      console.error('Error fetching data from Singlas_Pressure:', error);
+      res.status(500).json({ error: 'Failed to retrieve data' });
+    } else {
+      res.json(results);
+    }
+  });
+});
+
+app.get('/api/Non_Singlas_Electrical', (req, res) => {
+  pool.query('SELECT * FROM Non_Singlas_Electrical ORDER BY id DESC', (error, results) => {
+    if (error) {
+      console.error('Error fetching data from Non_Singlas_Electrical:', error);
+      res.status(500).json({ error: 'Failed to retrieve data' });
+    } else {
+      res.json(results);
+    }
+  });
+});
+
+app.get('/api/Non_Singlas_Temperature', (req, res) => {
+  pool.query('SELECT * FROM Non_Singlas_Temperature ORDER BY id DESC', (error, results) => {
+    if (error) {
+      console.error('Error fetching data from Non_Singlas_Temperature:', error);
+      res.status(500).json({ error: 'Failed to retrieve data' });
+    } else {
+      res.json(results);
+    }
+  });
+});
+
+app.get('/api/Non_Singlas_Pressure', (req, res) => {
+  pool.query('SELECT * FROM Non_Singlas_Pressure ORDER BY id DESC', (error, results) => {
+    if (error) {
+      console.error('Error fetching data from Non_Singlas_Pressure:', error);
+      res.status(500).json({ error: 'Failed to retrieve data' });
+    } else {
+      res.json(results);
+    }
+  });
+});
 
 // insert new user
 const saltRounds = 10; // Define saltRounds for bcrypt hashing

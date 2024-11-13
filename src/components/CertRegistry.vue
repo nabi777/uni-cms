@@ -1,0 +1,262 @@
+<template>
+  <div class="cert-registry">
+    <h1>Cert Registry</h1>
+
+    <!-- Button Container for Selecting Tables -->
+    <div class="button-container">
+      <button @click="loadTableData('Singlas_Electrical')">Singlas Electrical</button>
+      <button @click="loadTableData('Singlas_Temperature')">Singlas Temperature</button>
+      <button @click="loadTableData('Singlas_Pressure')">Singlas Pressure</button>
+      <button @click="loadTableData('Non_Singlas_Electrical')">Non Singlas Electrical</button>
+      <button @click="loadTableData('Non_Singlas_Temperature')">Non Singlas Temperature</button>
+      <button @click="loadTableData('Non_Singlas_Pressure')">Non Singlas Pressure</button>
+    </div>
+
+    <!-- Search Bar -->
+    <SearchBar @search="handleSearch" />
+
+    <!-- Dynamic Table Display with Pagination -->
+    <div v-if="activeTable && paginatedEntries.length" class="model-table">
+      <h2>{{ activeTable }}</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Cert Number</th>
+            <th>Brand Name</th>
+            <th>Model Number</th>
+            <th>Reading Range</th>
+            <th>Job Number</th>
+            <th>Serial Number</th>
+            <th>Customer Name</th>
+            <th>Calibrated By</th>
+            <th>Void Status</th>
+            <th>Modified Date & Time</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="entry in paginatedEntries" :key="entry.id">
+            <td>{{ entry.cert_number }}</td>
+            <td>{{ entry.brand_name }}</td>
+            <td>{{ entry.model_number }}</td>
+            <td>{{ entry.reading_range }}</td>
+            <td>{{ entry.job_number }}</td>
+            <td>{{ entry.serial_number }}</td>
+            <td>{{ entry.customer_name }}</td>
+            <td>{{ entry.calibrated_by }}</td>
+            <td>{{ entry.void_status }}</td>
+            <td>{{ entry.modified_date_time }}</td>
+            <td>
+              <!-- Buttons disabled for now -->
+              <button 
+                @click="handleEdit(entry)" 
+                class="action-btn edit-btn" 
+                :disabled="true">
+                Edit
+              </button>
+              <button 
+                @click="voidEntry(entry)" 
+                class="action-btn void-btn" 
+                :disabled="true">
+                Void
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+
+      <!-- Pagination Controls -->
+      <div class="table-footer">
+        <div class="total-items">
+          Total {{ filteredEntries.length }} items
+        </div>
+        <div class="pagination">
+          <button @click="prevPage" :disabled="currentPage === 1">← Prev</button>
+          <button @click="nextPage" :disabled="currentPage === totalPages">Next →</button>
+        </div>
+      </div>
+    </div>
+
+    <div v-else-if="activeTable && !tableData.length" class="model-table">
+      <h2>{{ activeTable }}</h2>
+      <p>No data available for this table.</p>
+    </div>
+  </div>
+</template>
+
+<script>
+import SearchBar from './SearchBar.vue';
+import axios from 'axios';
+
+export default {
+  name: 'CertRegistry',
+  components: {
+    SearchBar,
+  },
+  data() {
+    return {
+      baseUrl: process.env.VUE_APP_API_BASE_URL,
+      activeTable: '',
+      tableData: [],
+      query: '',
+      currentPage: 1,
+      itemsPerPage: 5,
+    };
+  },
+  computed: {
+    filteredEntries() {
+      return this.tableData.filter(entry =>
+        Object.values(entry).some(value =>
+          String(value).toLowerCase().includes(this.query.toLowerCase())
+        )
+      );
+    },
+    totalPages() {
+      return Math.ceil(this.filteredEntries.length / this.itemsPerPage);
+    },
+    paginatedEntries() {
+      if (this.filteredEntries.length) {
+        const start = (this.currentPage - 1) * this.itemsPerPage;
+        const end = start + this.itemsPerPage;
+        return this.filteredEntries.slice(start, end);
+      }
+      return [];
+    },
+  },
+  methods: {
+    handleSearch(query) {
+      this.query = query;
+      this.currentPage = 1;
+    },
+    async loadTableData(tableName) {
+      this.activeTable = tableName.replace(/_/g, ' ');  // Format table name
+      this.tableData = [];
+      try {
+        const response = await axios.get(`${this.baseUrl}/api/${tableName}`);
+        this.tableData = response.data || [];
+        this.currentPage = 1;
+      } catch (error) {
+        console.error(`Error loading data from ${tableName}:`, error);
+        this.tableData = [];
+      }
+    },
+    nextPage() {
+      if (this.currentPage < this.totalPages) {
+        this.currentPage++;
+      }
+    },
+    prevPage() {
+      if (this.currentPage > 1) {
+        this.currentPage--;
+      }
+    },
+    handleEdit(entry) {
+      console.log('Attempting to emit edit event with entry:', entry);
+      this.$emit('edit', entry); // Emit edit event with entry data
+    },
+    async voidEntry(entry) {
+      if (confirm(`Are you sure you want to void this entry with Cert Number: ${entry.cert_number}?`)) {
+        console.log(`Voiding entry with Cert Number: ${entry.cert_number}`);
+      }
+    },
+  },
+};
+</script>
+
+<style scoped>
+.cert-registry {
+  padding: 20px;
+}
+
+.button-container {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.button-container button {
+  padding: 10px 20px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.button-container button:hover {
+  background-color: #0056b3;
+}
+
+.model-table {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+
+th, td {
+  padding: 10px;
+  border: 1px solid #dee2e6;
+}
+
+thead th {
+  background-color: #f8f9fa;
+}
+
+.action-btn {
+  margin-right: 5px;
+  padding: 5px 10px;
+  font-size: 12px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.edit-btn {
+  background-color: #007bff;
+  color: white;
+}
+
+.void-btn {
+  background-color: #dc3545;
+  color: white;
+}
+
+.edit-btn:hover {
+  background-color: #0056b3;
+}
+
+.void-btn:hover {
+  background-color: #c82333;
+}
+
+.table-footer {
+  display: flex;
+  justify-content: space-between;
+}
+
+.total-items {
+  color: #6c757d;
+}
+
+.pagination button {
+  padding: 5px 10px;
+  background-color: #17a2b8;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.pagination button:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+</style>

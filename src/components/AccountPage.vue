@@ -8,11 +8,11 @@
         @buttonClick="handleTopBarButtonClick"
       />
       <SearchBar
-        v-if="showSearchBar && !isOrderFormVisible && !isEditOrderFormVisible && !isEditAccountFormVisible && !isEditCustomerFormVisible && !isEditProductFormVisible && !isEditModelFormVisible && !isUsersPageVisible"
+        v-if="showSearchBar && !isOrderFormVisible && !isEditOrderFormVisible && !isEditAccountFormVisible && !isEditCustomerFormVisible && !isEditProductFormVisible && !isEditModelFormVisible && !isUsersPageVisible && !isCertRegistryVisible && !isNewCertFormVisible"
         @search="handleSearch"
       />
       <component
-        v-if="!isOrderFormVisible && !isEditOrderFormVisible && !isEditAccountFormVisible && !isEditCustomerFormVisible && !isEditProductFormVisible && !isEditModelFormVisible && !isUsersPageVisible"
+        v-if="!isOrderFormVisible && !isEditOrderFormVisible && !isEditAccountFormVisible && !isEditCustomerFormVisible && !isEditProductFormVisible && !isEditModelFormVisible && !isUsersPageVisible && !isCertRegistryVisible && !isNewCertFormVisible"
         :is="currentComponent"
         :searchQuery="searchQuery"
         @edit-order="handleEditOrder"
@@ -21,84 +21,22 @@
         @edit-product="handleEditProduct"
         @edit-model="handleEditModel"
       />
-      <UsersPage
-        v-if="isUsersPageVisible"
-        @close="closeForm"
-        @submit="refreshUsersTable"
-      />
-      <NewOrderForm
-        v-if="isOrderFormVisible && formType === 'order'"
-        @close="closeForm"
-        @submit="refreshOrderTable"
-      />
-      <EditOrderForm
-        v-if="isEditOrderFormVisible"
-        :orderData="editOrderData"
-        @close="closeForm"
-        @submit="updateOrder"
-      />
-      <EditAccountForm
-        v-if="isEditAccountFormVisible"
-        :accountData="editAccountData"
-        @close="closeForm"
-        @submit="updateAccount"
-        class="side-form"
-      />
-      <EditCustomerForm
-        v-if="isEditCustomerFormVisible"
-        :customerData="editCustomerData"
-        @close="closeForm"
-        @submit="refreshCustomerTable"
-        class="side-form"
-      />
-      <EditProductForm
-        v-if="isEditProductFormVisible"
-        :productData="editProductData"
-        @close="closeForm"
-        @submit="updateProduct"
-        class="side-form"
-      />
-      <EditModelForm
-        v-if="isEditModelFormVisible"
-        :modelData="editModelData"
-        @close="closeForm"
-        @submit="updateModel"
-        class="side-form"
-      />
-      <NewAccountForm
-        v-if="isFormVisible && formType === 'account'"
-        @close="closeForm"
-        @submit="refreshAccountTable"
-        class="side-form"
-      />
-      <NewCustomerForm
-        v-if="isFormVisible && formType === 'customer'"
-        @close="closeForm"
-        @submit="refreshCustomerTable"
-        class="side-form"
-      />
-      <NewProductForm
-        v-if="isFormVisible && formType === 'product'"
-        @close="closeForm"
-        @submit="refreshProductTable"
-        class="side-form"
-      />
-      <NewModelForm
-        v-if="isFormVisible && formType === 'model'"
-        @close="closeForm"
-        @submit="refreshModelTable"
-        class="side-form"
-      />
-      <!-- Add the NewCalibrationForm and listen for the refresh-orders event -->
-      <NewCalibrationForm
-        v-if="isCalibrationFormVisible"
-        :orderId="selectedOrderId"
-        @close="closeForm"
-        @refresh-orders="refreshOrdersTable"
-      />
+      <UsersPage v-if="isUsersPageVisible" @close="closeForm" @submit="refreshUsersTable" />
+      <CertRegistry v-if="isCertRegistryVisible" @close="closeForm" @refresh="refreshCertRegistry" />
+      <NewCertForm v-if="isNewCertFormVisible" @close="closeForm" @submit="refreshCertRegistry" />
+      <NewOrderForm v-if="isOrderFormVisible && formType === 'order'" @close="closeForm" @submit="refreshOrderTable" />
+      <EditOrderForm v-if="isEditOrderFormVisible" :orderData="editOrderData" @close="closeForm" @submit="updateOrder" />
+      <EditAccountForm v-if="isEditAccountFormVisible" :accountData="editAccountData" @close="closeForm" @submit="updateAccount" class="side-form" />
+      <EditCustomerForm v-if="isEditCustomerFormVisible" :customerData="editCustomerData" @close="closeForm" @submit="refreshCustomerTable" class="side-form" />
+      <EditProductForm v-if="isEditProductFormVisible" :productData="editProductData" @close="closeForm" @submit="updateProduct" class="side-form" />
+      <EditModelForm v-if="isEditModelFormVisible" :modelData="editModelData" @close="closeForm" @submit="updateModel" class="side-form" />
+      <NewAccountForm v-if="isFormVisible && formType === 'account'" @close="closeForm" @submit="refreshAccountTable" class="side-form" />
+      <NewCustomerForm v-if="isFormVisible && formType === 'customer'" @close="closeForm" @submit="refreshCustomerTable" class="side-form" />
+      <NewProductForm v-if="isFormVisible && formType === 'product'" @close="closeForm" @submit="refreshProductTable" class="side-form" />
+      <NewModelForm v-if="isFormVisible && formType === 'model'" @close="closeForm" @submit="refreshModelTable" class="side-form" />
     </div>
   </div>
-</template>   
+</template>
 
 <script>
 import AppSidebar from './AppSidebar.vue';
@@ -119,7 +57,9 @@ import NewAccountForm from './NewAccountForm.vue';
 import NewCustomerForm from './NewCustomerForm.vue';
 import NewProductForm from './NewProductForm.vue';
 import NewModelForm from './NewModelForm.vue';
-import UsersPage from './UsersPage.vue'; // Import UsersPage.vue
+import UsersPage from './UsersPage.vue';
+import CertRegistry from './CertRegistry.vue';
+import NewCertForm from './NewCertForm.vue';
 
 export default {
   name: 'AccountPage',
@@ -142,7 +82,9 @@ export default {
     NewCustomerForm,
     NewProductForm,
     NewModelForm,
-    UsersPage, // Register UsersPage.vue
+    UsersPage,
+    CertRegistry,
+    NewCertForm,
   },
   data() {
     return {
@@ -154,7 +96,9 @@ export default {
       isEditCustomerFormVisible: false,
       isEditProductFormVisible: false,
       isEditModelFormVisible: false,
-      isUsersPageVisible: false, // State for UsersPage visibility
+      isUsersPageVisible: false,
+      isCertRegistryVisible: false,
+      isNewCertFormVisible: false,
       showModelListForm: false,
       formType: '',
       pageTitle: 'Account Management',
@@ -168,11 +112,26 @@ export default {
       editModelData: null,
     };
   },
-  
   methods: {
-    refreshOrdersTable() {
-      // Call the method that fetches orders in the orders table component
-      this.$refs.OrderTable.fetchOrders();
+    closeAllForms() {
+      this.isFormVisible = false;
+      this.isOrderFormVisible = false;
+      this.isEditOrderFormVisible = false;
+      this.isEditAccountFormVisible = false;
+      this.isEditCustomerFormVisible = false;
+      this.isEditProductFormVisible = false;
+      this.isEditModelFormVisible = false;
+      this.isUsersPageVisible = false;
+      this.isCertRegistryVisible = false;
+      this.isNewCertFormVisible = false;
+      this.showSearchBar = true;
+      this.showModelListForm = false;
+    },
+    refreshCertRegistry() {
+      this.currentComponent = 'CertRegistry';
+      this.$nextTick(() => {
+        this.isCertRegistryVisible = true;
+      });
     },
     handleSearch(query) {
       this.searchQuery = query;
@@ -184,7 +143,11 @@ export default {
     handleTopBarButtonClick() {
       this.closeAllForms();
 
-      if (this.currentComponent === 'AccountTable') {
+      if (this.currentComponent === 'CertRegistry') {
+        this.isNewCertFormVisible = true;
+        this.isCertRegistryVisible = true;
+        this.showSearchBar = false; // Hide search bar when CertRegistry is active
+      } else if (this.currentComponent === 'AccountTable') {
         this.formType = 'account';
         this.isFormVisible = true;
       } else if (this.currentComponent === 'CustomerTable') {
@@ -204,80 +167,28 @@ export default {
       }
     },
     closeForm() {
-      this.isFormVisible = false;
-      this.isOrderFormVisible = false;
-      this.isEditOrderFormVisible = false;
-      this.isEditAccountFormVisible = false;
-      this.isEditCustomerFormVisible = false;
-      this.isEditProductFormVisible = false;
-      this.isEditModelFormVisible = false;
-      this.isUsersPageVisible = false; // Close UsersPage
-      this.showSearchBar = true;
-      this.showModelListForm = false;
+      if (this.isCertRegistryVisible && this.isNewCertFormVisible) {
+        this.isNewCertFormVisible = false;
+      } else {
+        this.closeAllForms();
+      }
+      if (!this.isCertRegistryVisible) {
+        this.showSearchBar = true; // Ensure search bar appears after closing CertRegistry
+      }
     },
-    handleEditOrder(orderData) {
-      this.editOrderData = orderData;
-      this.isEditOrderFormVisible = true;
-      this.showSearchBar = false;
-    },
-    handleEditAccount(accountData) {
-      this.editAccountData = accountData;
-      this.isEditAccountFormVisible = true;
-      this.showSearchBar = false;
-    },
-    handleEditCustomer(customerData) {
-      this.editCustomerData = customerData;
-      this.isEditCustomerFormVisible = true;
-      this.showSearchBar = false;
-    },
-    handleEditProduct(productData) {
-      this.editProductData = productData;
-      this.isEditProductFormVisible = true;
-      this.showSearchBar = false;
-    },
-    handleEditModel(modelData) {
-      this.editModelData = modelData;
-      this.isEditModelFormVisible = true;
-      this.showSearchBar = false;
-    },
-    updateOrder() {
-      this.isEditOrderFormVisible = false;
-      this.showSearchBar = true;
-    },
-    updateAccount() {
-      this.isEditAccountFormVisible = false;
-      this.showSearchBar = true; // Ensure the search bar reappears after editing an account
-      this.refreshAccountTable();
-    },
-    updateCustomer() {
-      this.isEditCustomerFormVisible = false;
-      this.refreshCustomerTable();
-    },
-    updateProduct() {
-      this.isEditProductFormVisible = false;
-      this.showSearchBar = true; // Ensure the search bar reappears after editing a product
-      this.refreshProductTable();
-    },
-    updateModel() {
-      this.isEditModelFormVisible = false;
-      this.showSearchBar = true; // Ensure the search bar reappears after editing a product
-      this.refreshModelTable();
-    },
-    closeAllForms() {
-      this.isFormVisible = false;
-      this.isOrderFormVisible = false;
-      this.isEditOrderFormVisible = false;
-      this.isEditAccountFormVisible = false;
-      this.isEditCustomerFormVisible = false;
-      this.isEditProductFormVisible = false;
-      this.isEditModelFormVisible = false;
-      this.isUsersPageVisible = false;
-      this.showSearchBar = true;
-      this.showModelListForm = false;
+    closeCertRegistry() {
+      this.isCertRegistryVisible = false;
+      this.showSearchBar = true; // Show search bar when CertRegistry is closed
     },
     updatePageContent(page) {
       this.closeAllForms();
-      if (page === 'account') {
+      if (page === 'cert-registry') {
+        this.pageTitle = 'Cert Registry';
+        this.buttonText = 'Add New Certificate';
+        this.isCertRegistryVisible = true;
+        this.currentComponent = 'CertRegistry';
+        this.showSearchBar = false; // Hide search bar when CertRegistry is active
+      } else if (page === 'account') {
         this.pageTitle = 'Account Management';
         this.buttonText = 'Add New Account';
         this.currentComponent = 'AccountTable';
@@ -300,15 +211,13 @@ export default {
       } else if (page === 'register-account') {
         this.pageTitle = 'Register Account';
         this.buttonText = 'Add New User';
-        this.isUsersPageVisible = true; // Activate UsersPage
-      } else {
-        this.currentComponent = 'AccountTable';
+        this.isUsersPageVisible = true;
       }
     },
     refreshUsersTable() {
       this.currentComponent = '';
       this.$nextTick(() => {
-        this.isUsersPageVisible = true; // Refresh UsersPage
+        this.isUsersPageVisible = true;
       });
     },
     refreshAccountTable() {
