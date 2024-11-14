@@ -11,7 +11,7 @@
       </div>
       <div class="form-group">
         <label for="uen">UEN</label>
-        <input type="text" id="uen" v-model="formData.UEN" />
+        <input type="text" id="uen" v-model="formData.uen" />
       </div>
       <div class="form-group">
         <label for="address">Address</label>
@@ -59,8 +59,10 @@ export default {
       this.$emit('close');
     },
     async submitForm() {
+      console.log('Form data before validation:', this.formData);
       const requiredFields = ['company_name', 'address', 'contact_name', 'email'];
       const missingFields = requiredFields.filter(field => !this.formData[field]);
+      console.log('Missing fields:', missingFields);
 
       if (missingFields.length > 0) {
         console.log('Missing fields:', missingFields);  // Log missing fields to the console
@@ -70,9 +72,10 @@ export default {
 
       try {
         // Log the data being passed to the API
-      console.log('Submitting the following customer data:', this.formData);
+        console.log('Submitting the following customer data:', this.formData);
+
         // API call to update customer data
-        const baseUrl = process.env.VUE_APP_API_BASE_URL
+        const baseUrl = process.env.VUE_APP_API_BASE_URL;
         const response = await axios.put(`${baseUrl}/api/customers/${this.formData.id}`, this.formData);
         console.log('Customer updated successfully:', response.data);
 
@@ -81,6 +84,7 @@ export default {
         this.closeForm();
       } catch (error) {
         console.error('Error updating customer:', error.response?.data || error.message);
+        alert('Failed to update customer: ' + (error.response ? error.response.data.message : error.message));
       }
     },
   },

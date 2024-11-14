@@ -439,6 +439,8 @@ app.put('/api/orders/:orderId', (req, res) => {
   const orderId = req.params.orderId;
   const { customerName, salesPerson, orderType, addedModels } = req.body;
 
+  console.log('Received request to update order:', orderId, customerName, salesPerson, orderType);
+
   // SQL queries to update the order and related models
   const updateOrderSql = `UPDATE orders SET customer_name = ?, sales_person = ?, order_type = ? WHERE order_id = ?`;
   const updateOrderData = [customerName, salesPerson, orderType, orderId];
@@ -750,18 +752,37 @@ app.delete('/api/customers/:id', (req, res) => {
 });
 
 // Route to update a customer by ID
+// app.put('/api/customers/:id', (req, res) => {
+//   console.log('Incoming customer data:', req.body);
+//   const customerId = req.params.id;
+//   const { companyName, uen, address, contactName, phoneNumber, email } = req.body;
+
+//   // Validate all required fields are provided
+//   if (!companyName || !address || !contactName || !email) {
+//     return res.status(400).json({ error: 'Required fields are missing' });
+//   }
+
+//   const sql = 'CALL UpdateCustomer(?, ?, ?, ?, ?, ?, ?)';
+//   pool.query(sql, [customerId, companyName, uen, address, contactName, phoneNumber, email], (err, results) => {
+//     if (err) {
+//       console.error('Error updating customer:', err);
+//       return res.status(500).send('Server error');
+//     }
+//     res.json({ message: 'Customer updated successfully!' });
+//   });
+// });
 app.put('/api/customers/:id', (req, res) => {
-  console.log('Incoming customer data:', req.body);
+  console.log('Received body:', req.body);
   const customerId = req.params.id;
-  const { companyName, uen, address, contactName, phoneNumber, email } = req.body;
+  const { company_name, uen, address, contact_name, phone_number, email } = req.body;
 
   // Validate all required fields are provided
-  if (!companyName || !address || !contactName || !email) {
+  if (!company_name || !address || !contact_name || !email) {
     return res.status(400).json({ error: 'Required fields are missing' });
   }
 
   const sql = 'CALL UpdateCustomer(?, ?, ?, ?, ?, ?, ?)';
-  pool.query(sql, [customerId, companyName, uen, address, contactName, phoneNumber, email], (err, results) => {
+  pool.query(sql, [customerId, company_name, uen, address, contact_name, phone_number, email], (err, results) => {
     if (err) {
       console.error('Error updating customer:', err);
       return res.status(500).send('Server error');
@@ -769,6 +790,8 @@ app.put('/api/customers/:id', (req, res) => {
     res.json({ message: 'Customer updated successfully!' });
   });
 });
+
+
 
 // Route to update an account by ID
 app.put('/api/accounts/:id', (req, res) => {

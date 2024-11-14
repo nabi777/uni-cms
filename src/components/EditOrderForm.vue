@@ -161,7 +161,7 @@ export default {
   methods: {
     async populateOrderForm(orderData) {
       try {
-        const baseUrl = process.env.VUE_APP_API_BASE_URL
+        const baseUrl = process.env.VUE_APP_API_BASE_URL;
         const response = await axios.get(`${baseUrl}/api/orders/${orderData.order_id}`);
         const orderDetails = response.data.orderDetails;
 
@@ -194,7 +194,7 @@ export default {
     },
     async fetchCustomers() {
       try {
-        const baseUrl = process.env.VUE_APP_API_BASE_URL
+        const baseUrl = process.env.VUE_APP_API_BASE_URL;
         const response = await axios.get(`${baseUrl}/api/customer-names`);
         this.customers = response.data;
       } catch (error) {
@@ -203,7 +203,7 @@ export default {
     },
     async fetchBrands() {
       try {
-        const baseUrl = process.env.VUE_APP_API_BASE_URL
+        const baseUrl = process.env.VUE_APP_API_BASE_URL;
         const response = await axios.get(`${baseUrl}/api/brands`);
         this.brands = response.data;
       } catch (error) {
@@ -213,7 +213,7 @@ export default {
     async fetchModelNumbers() {
       if (this.formData.brand) {
         try {
-          const baseUrl = process.env.VUE_APP_API_BASE_URL
+          const baseUrl = process.env.VUE_APP_API_BASE_URL;
           const response = await axios.get(`${baseUrl}/api/models/${this.formData.brand}`);
           this.models = response.data;
         } catch (error) {
@@ -225,7 +225,7 @@ export default {
     },
     async fetchSalesPersons() {
       try {
-        const baseUrl = process.env.VUE_APP_API_BASE_URL
+        const baseUrl = process.env.VUE_APP_API_BASE_URL;
         const response = await axios.get(`${baseUrl}/api/accounts-name`);
         this.salesPersons = response.data;
       } catch (error) {
@@ -237,7 +237,9 @@ export default {
     },
     async submitForm() {
       try {
-        const baseUrl = process.env.VUE_APP_API_BASE_URL
+        console.log('Starting submitForm');
+        console.log('Order ID:', this.orderData.order_id);
+        const baseUrl = process.env.VUE_APP_API_BASE_URL;
         if (this.addedModels.length === 0) {
           alert('Please add at least one model.');
           return;
@@ -253,11 +255,14 @@ export default {
           addedModels: this.addedModels
         };
 
-        await axios.put(`${baseUrl}/api/orders/${this.orderData.order_id}`, orderData);
+        console.log('updating');
+        const response = await axios.put(`${baseUrl}/api/orders/${this.orderData.order_id}`, orderData);
+        console.log('Response:', response); // Log the response for debugging
         this.$emit('submit', this.formData);
         this.closeForm();
       } catch (error) {
         console.error('Error updating order:', error);
+        alert('Failed to update order: ' + (error.response ? error.response.data.message : error.message));
       }
     },
     addModel() {

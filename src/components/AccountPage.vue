@@ -127,6 +127,54 @@ export default {
       this.showSearchBar = true;
       this.showModelListForm = false;
     },
+    handleEditOrder(orderData) {
+      this.editOrderData = orderData;
+      this.isEditOrderFormVisible = true;
+      this.showSearchBar = false;
+    },
+    handleEditAccount(accountData) {
+      this.editAccountData = accountData;
+      this.isEditAccountFormVisible = true;
+      this.showSearchBar = false;
+    },
+    handleEditCustomer(customerData) {
+      this.editCustomerData = customerData;
+      this.isEditCustomerFormVisible = true;
+      this.showSearchBar = false;
+    },
+    handleEditProduct(productData) {
+      this.editProductData = productData;
+      this.isEditProductFormVisible = true;
+      this.showSearchBar = false;
+    },
+    handleEditModel(modelData) {
+      this.editModelData = modelData;
+      this.isEditModelFormVisible = true;
+      this.showSearchBar = false;
+    },
+    updateOrder() {
+      this.isEditOrderFormVisible = false;
+      this.showSearchBar = true;
+    },
+    updateAccount() {
+      this.isEditAccountFormVisible = false;
+      this.showSearchBar = true; // Ensure the search bar reappears after editing an account
+      this.refreshAccountTable();
+    },
+    updateCustomer() {
+      this.isEditCustomerFormVisible = false;
+      this.refreshCustomerTable();
+    },
+    updateProduct() {
+      this.isEditProductFormVisible = false;
+      this.showSearchBar = true; // Ensure the search bar reappears after editing a product
+      this.refreshProductTable();
+    },
+    updateModel() {
+      this.isEditModelFormVisible = false;
+      this.showSearchBar = true; // Ensure the search bar reappears after editing a product
+      this.refreshModelTable();
+    },
     refreshCertRegistry() {
       this.currentComponent = 'CertRegistry';
       this.$nextTick(() => {
