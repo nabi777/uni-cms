@@ -2,6 +2,11 @@
   <div class="cert-registry">
     <h1>Cert Registry</h1>
 
+    <!-- Export to Excel Button (Top-right) -->
+    <div class="export-button-container">
+      <button @click="exportToExcel" class="export-btn">Export to Excel</button>
+    </div>
+
     <!-- Button Container for Selecting Tables -->
     <div class="button-container">
       <button @click="loadTableData('Singlas_Electrical')">Singlas Electrical</button>
@@ -87,6 +92,7 @@
 <script>
 import SearchBar from './SearchBar.vue';
 import axios from 'axios';
+import * as XLSX from 'xlsx';  // Import xlsx for Excel file generation
 
 export default {
   name: 'CertRegistry',
@@ -159,6 +165,13 @@ export default {
         console.log(`Voiding entry with Cert Number: ${entry.cert_number}`);
       }
     },
+    exportToExcel() {
+      const tableName = this.activeTable.replace(/ /g, '_').toLowerCase();
+      const ws = XLSX.utils.json_to_sheet(this.tableData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, tableName);
+      XLSX.writeFile(wb, `${tableName}.xlsx`);
+    },
   },
 };
 </script>
@@ -166,6 +179,26 @@ export default {
 <style scoped>
 .cert-registry {
   padding: 20px;
+}
+
+.export-button-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.export-btn {
+  padding: 10px 20px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.export-btn:hover {
+  background-color: #218838;
 }
 
 .button-container {

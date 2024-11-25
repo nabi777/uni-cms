@@ -71,6 +71,38 @@ const pool = mysql.createPool({
 //   });
 // });
 
+
+// Export order to excel
+app.get('/api/export-orders', (req, res) => {
+  const query = `
+    SELECT
+      o.order_id,
+      o.customer_name,
+      o.order_type,
+      o.modified_date_time,
+      o.status,
+      o.job_number,
+      o.po_number,
+      om.model_id,
+      om.brand_name,
+      om.model_number,
+      om.tag_number,
+      om.serial_number,
+      om.cert_number
+    FROM orders o
+    LEFT JOIN order_models om ON o.order_id = om.order_id;
+  `;
+
+  pool.query(query, (err, results) => {
+    if (err) {
+      console.error('Error fetching order data:', err);
+      return res.status(500).json({ message: 'Error fetching order data' });
+    }
+    res.json(results);
+  });
+});
+
+
 // Helper function to map the certificate type to the actual database table name
 function getTableName(certificateType) {
   switch (certificateType) {

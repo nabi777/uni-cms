@@ -1,6 +1,11 @@
 <template>
   <div>
     <section class="order-table">
+      <!-- Export Button at the top-right corner -->
+      <div class="export-btn-container">
+        <button @click="exportToExcel" class="export-btn">Export to Excel</button>
+      </div>
+
       <table>
         <thead>
           <tr>
@@ -56,7 +61,8 @@
 
 <script>
 import axios from 'axios';
-import NewCalibrationForm from './NewCalibrationForm.vue'; // Ensure this import points to your actual NewCalibrationForm component
+import * as XLSX from 'xlsx';
+import NewCalibrationForm from './NewCalibrationForm.vue';
 
 export default {
   name: 'OrderTable',
@@ -76,7 +82,7 @@ export default {
       itemsPerPage: 5,
       dropdownVisible: null,
       showCalibrationForm: false,
-      selectedOrderId: null, // To track which order is selected for calibration
+      selectedOrderId: null,
     };
   },
   computed: {
@@ -101,8 +107,7 @@ export default {
   methods: {
     async fetchOrders() {
       try {
-        const baseUrl = process.env.VUE_APP_API_BASE_URL
-
+        const baseUrl = process.env.VUE_APP_API_BASE_URL;
         const response = await axios.get(`${baseUrl}/api/orders`);
         this.orders = response.data;
       } catch (error) {
@@ -112,8 +117,7 @@ export default {
     async deleteOrder(orderId) {
       if (confirm(`Are you sure you want to delete order with ID: ${orderId}?`)) {
         try {
-          const baseUrl = process.env.VUE_APP_API_BASE_URL
-
+          const baseUrl = process.env.VUE_APP_API_BASE_URL;
           await axios.delete(`${baseUrl}/api/orders/${orderId}`);
           this.orders = this.orders.filter((order) => order.order_id !== orderId);
         } catch (error) {
@@ -168,6 +172,38 @@ export default {
         this.currentPage++;
       }
     },
+
+    // Export to Excel function
+    exportToExcel() {
+  axios
+    .get(`${process.env.VUE_APP_API_BASE_URL}/api/export-orders`)
+    .then((response) => {
+      // Process the response data for export
+      const exportData = response.data.map((entry) => ({
+        'Order ID': entry.order_id,
+        'Customer Name': entry.customer_name,
+        'Order Type': entry.order_type,
+        'Modified Date & Time': entry.modified_date_time,
+        'Status': entry.status || 'Pending',
+        'Job Number': entry.job_number || 'N/A',  // Job number from orders table
+        'PO Number': entry.po_number || 'N/A',    // PO number from orders table
+        'Brand Name': entry.brand_name,
+        'Model Number': entry.model_number,
+        'Tag Number': entry.tag_number,
+        'Serial Number': entry.serial_number,
+        'Cert Number': entry.cert_number,
+      }));
+
+      // Create a worksheet from the data
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Orders and Models');
+      XLSX.writeFile(wb, 'Orders_and_Models.xlsx');
+    })
+    .catch((error) => {
+      console.error('Error exporting data:', error);
+    });
+      },
   },
   mounted() {
     this.fetchOrders();
@@ -184,6 +220,26 @@ export default {
   padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.export-btn-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.export-btn {
+  padding: 10px 20px;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.export-btn:hover {
+  background-color: #218838;
 }
 
 table {
