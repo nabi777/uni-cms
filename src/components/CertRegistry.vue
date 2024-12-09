@@ -15,6 +15,10 @@
       <button @click="loadTableData('Non_Singlas_Electrical')">Non Singlas Electrical</button>
       <button @click="loadTableData('Non_Singlas_Temperature')">Non Singlas Temperature</button>
       <button @click="loadTableData('Non_Singlas_Pressure')">Non Singlas Pressure</button>
+      
+      <!-- New buttons for "Singlas On-site" and "Non Singlas On-Site" -->
+      <button @click="loadTableData('Singlas_On_Site')" class="purple-btn">Singlas On-site</button>
+      <button @click="loadTableData('Non_Singlas_On_Site')" class="purple-btn">Non Singlas On-Site</button>
     </div>
 
     <!-- Search Bar -->
@@ -53,16 +57,10 @@
             <td>{{ entry.modified_date_time }}</td>
             <td>
               <!-- Buttons disabled for now -->
-              <button 
-                @click="handleEdit(entry)" 
-                class="action-btn edit-btn" 
-                :disabled="true">
+              <button @click="handleEdit(entry)" class="action-btn edit-btn" :disabled="true">
                 Edit
               </button>
-              <button 
-                @click="voidEntry(entry)" 
-                class="action-btn void-btn" 
-                :disabled="true">
+              <button @click="voidEntry(entry)" class="action-btn void-btn" :disabled="true">
                 Void
               </button>
             </td>
@@ -219,6 +217,21 @@ export default {
 
 .button-container button:hover {
   background-color: #0056b3;
+}
+
+/* New button styles for the purple buttons */
+.purple-btn {
+  padding: 10px 20px;
+  background-color: #800080;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.purple-btn:hover {
+  background-color: #6a006a;
 }
 
 .model-table {

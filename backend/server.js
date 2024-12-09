@@ -102,8 +102,7 @@ app.get('/api/export-orders', (req, res) => {
   });
 });
 
-
-// Helper function to map the certificate type to the actual database table name
+//helper map table
 function getTableName(certificateType) {
   switch (certificateType) {
     case 'Singlas Electrical':
@@ -118,10 +117,15 @@ function getTableName(certificateType) {
       return 'Non_Singlas_Temperature';
     case 'Pressure':
       return 'Non_Singlas_Pressure';
+    case 'Singlas On-site':  // Singlas On-site
+      return 'Singlas_On_Site';
+    case 'Non Singlas On-Site':  // Non Singlas On-Site
+      return 'Non_Singlas_On_Site';
     default:
       throw new Error('Invalid certificate type');
   }
 }
+
 app.post('/api/certifications', async (req, res) => {
   const {
     certificateType,
@@ -136,24 +140,24 @@ app.post('/api/certifications', async (req, res) => {
   } = req.body;
 
   // Function to map certificate type to table name
-  function getTableName(certificateType) {
-    switch (certificateType) {
-      case 'Singlas Electrical':
-        return 'Singlas_Electrical';
-      case 'Singlas Temperature':
-        return 'Singlas_Temperature';
-      case 'Singlas Pressure':
-        return 'Singlas_Pressure';
-      case 'Electrical':
-        return 'Non_Singlas_Electrical';
-      case 'Temperature':
-        return 'Non_Singlas_Temperature';
-      case 'Pressure':
-        return 'Non_Singlas_Pressure';
-      default:
-        throw new Error('Invalid certificate type');
-    }
-  }
+  // function getTableName(certificateType) {
+  //   switch (certificateType) {
+  //     case 'Singlas Electrical':
+  //       return 'Singlas_Electrical';
+  //     case 'Singlas Temperature':
+  //       return 'Singlas_Temperature';
+  //     case 'Singlas Pressure':
+  //       return 'Singlas_Pressure';
+  //     case 'Electrical':
+  //       return 'Non_Singlas_Electrical';
+  //     case 'Temperature':
+  //       return 'Non_Singlas_Temperature';
+  //     case 'Pressure':
+  //       return 'Non_Singlas_Pressure';
+  //     default:
+  //       throw new Error('Invalid certificate type');
+  //   }
+  // }
 
   let tableName;
   try {
@@ -247,6 +251,33 @@ app.get('/api/latest-certificate', async (req, res) => {
 //     res.json({ message: 'Certification inserted successfully', id: results.insertId });
 //   });
 // });
+
+
+// Example route to handle Singlas_On_Site table data
+app.get('/api/Singlas_On_Site', (req, res) => {
+  const sql = 'SELECT * FROM Singlas_On_Site';  // Query to fetch data from Singlas_On_Site table
+
+  pool.query(sql, (err, results) => {
+    if (err) {
+      console.error('Error fetching data from Singlas_On_Site:', err);
+      return res.status(500).send('Server Error');
+    }
+    res.json(results);  // Send the data back to the frontend
+  });
+});
+
+// Example route to handle Non_Singlas_On_Site table data
+app.get('/api/Non_Singlas_On_Site', (req, res) => {
+  const sql = 'SELECT * FROM Non_Singlas_On_Site';  // Query to fetch data from Non_Singlas_On_Site table
+
+  pool.query(sql, (err, results) => {
+    if (err) {
+      console.error('Error fetching data from Non_Singlas_On_Site:', err);
+      return res.status(500).send('Server Error');
+    }
+    res.json(results);  // Send the data back to the frontend
+  });
+});
 
 // route for cert table
 // Define app.get routes for each table
