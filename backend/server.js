@@ -139,25 +139,6 @@ app.post('/api/certifications', async (req, res) => {
     cert_number
   } = req.body;
 
-  // Function to map certificate type to table name
-  // function getTableName(certificateType) {
-  //   switch (certificateType) {
-  //     case 'Singlas Electrical':
-  //       return 'Singlas_Electrical';
-  //     case 'Singlas Temperature':
-  //       return 'Singlas_Temperature';
-  //     case 'Singlas Pressure':
-  //       return 'Singlas_Pressure';
-  //     case 'Electrical':
-  //       return 'Non_Singlas_Electrical';
-  //     case 'Temperature':
-  //       return 'Non_Singlas_Temperature';
-  //     case 'Pressure':
-  //       return 'Non_Singlas_Pressure';
-  //     default:
-  //       throw new Error('Invalid certificate type');
-  //   }
-  // }
 
   let tableName;
   try {
@@ -183,34 +164,6 @@ app.post('/api/certifications', async (req, res) => {
   }
 });
 
-// // Insert a new certificate into the database based on certificate type
-// app.post('/api/certifications', (req, res) => {
-//   const { certificateType, cert_number, jobNumber, customerName, serialNumber, brandName, modelNumber, testRange, calibratedBy } = req.body;
-  
-//   // Replace spaces with underscores in the table name
-//   const formattedTable = certificateType.replace(/\s/g, '_');
-  
-//   // Insert query based on certificate type
-//   const query = `INSERT INTO ?? (cert_number, job_number, customer_name, serial_number, brand_name, model_number, reading_range, calibrated_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`;
-//   const values = [
-//     formattedTable,
-//     cert_number,
-//     jobNumber,
-//     customerName,
-//     serialNumber,
-//     brandName,
-//     modelNumber,
-//     testRange || null, // Allow null for testRange
-//     calibratedBy || 'Ryan' // Allow null
-//   ];
-  
-//   pool.query(query, values, (error, results) => {
-//     if (error) {
-//       return res.status(500).json({ error: `Failed to insert into ${formattedTable}.` });
-//     }
-//     res.json({ success: true, id: results.insertId });
-//   });
-// });
 
 // Endpoint to fetch the latest certificate
 app.get('/api/latest-certificate', async (req, res) => {
