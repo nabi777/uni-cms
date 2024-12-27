@@ -64,7 +64,9 @@ export default {
 
       try {
         const baseUrl = process.env.VUE_APP_API_BASE_URL
-
+         // Log the API URL for debugging
+        const apiUrl = `${baseUrl}/api/accounts`;
+        console.log(`API URL: ${apiUrl}`);
         this.$emit("submit", this.formData); // Emit form data first
 
         const response = await axios.post(`${baseUrl}/api/accounts`, this.formData);

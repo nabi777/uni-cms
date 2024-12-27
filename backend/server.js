@@ -24,53 +24,6 @@ const pool = mysql.createPool({
   queueLimit: 0,
 });
 
-// const db = mysql.createConnection({
-//   host: 'database-1.cr4iuy8yuyzn.ap-southeast-1.rds.amazonaws.com', // or your database host if different
-//   user: 'admin',
-//   password: '1B2Lj1wbKAJJ5MSAxPAs',
-//   database: 'db',
-// });
-
-// // API endpoint to update the void_status
-// app.put('/api/:tableName/void/:cert_number', (req, res) => {
-//   const { tableName, cert_number } = req.params;
-//   const { void_status } = req.body; // We expect a field like { "void_status": "Voided" }
-
-//   // Ensure the table name is valid and matches one of your allowed tables
-//   const allowedTables = [
-//     'Singlas_Electrical',
-//     'Singlas_Temperature',
-//     'Singlas_Pressure',
-//     'Non_Singlas_Electrical',
-//     'Non_Singlas_Temperature',
-//     'Non_Singlas_Pressure'
-//   ];
-
-//   if (!allowedTables.includes(tableName)) {
-//     return res.status(400).json({ message: 'Invalid table name' });
-//   }
-
-//   // Update the void_status field in the selected table
-//   const query = `
-//     UPDATE ?? 
-//     SET void_status = ? 
-//     WHERE cert_number = ?
-//   `;
-  
-//   db.query(query, [tableName, void_status, cert_number], (err, result) => {
-//     if (err) {
-//       console.error('Error updating certification status:', err);
-//       return res.status(500).json({ message: 'Error updating certification status' });
-//     }
-
-//     if (result.affectedRows > 0) {
-//       return res.status(200).json({ message: 'Certification status updated successfully' });
-//     } else {
-//       return res.status(404).json({ message: 'Certification not found' });
-//     }
-//   });
-// });
-
 
 // Export order to excel
 app.get('/api/export-orders', (req, res) => {
@@ -126,7 +79,8 @@ function getTableName(certificateType) {
   }
 }
 
-app.post('/api/certifications', async (req, res) => {
+// API to insert certification
+app.post('/api/certifications', (req, res) => {
   const {
     certificateType,
     jobNumber,
@@ -135,34 +89,89 @@ app.post('/api/certifications', async (req, res) => {
     brandName,
     modelNumber,
     testRange = null, // Allow null if not provided
-    calibratedBy = 'Ryan', // Default value if empty
-    cert_number
+    calibratedBy = 'Ryan', // Default value
+    cert_number,
   } = req.body;
 
-
   let tableName;
+
   try {
-    tableName = getTableName(certificateType); // Get the correct table name
+    tableName = getTableName(certificateType);
+    console.log(`Resolved table name: ${tableName}`);
   } catch (error) {
     return res.status(400).json({ error: error.message });
   }
 
-  try {
-    const query = `INSERT INTO ${tableName} (cert_number, job_number, customer_name, serial_number, brand_name, model_number, reading_range, calibrated_by, modified_date_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`;
-    
-    // Use pool to perform the query
-    pool.query(query, [cert_number, jobNumber, customerName, serialNumber, brandName, modelNumber, testRange, calibratedBy], (error, results) => {
-      if (error) {
-        console.error('Error inserting certification:', error);
-        return res.status(500).json({ error: 'Failed to create certification' });
-      }
-      res.status(201).json({ message: 'Certification created successfully' });
-    });
-  } catch (error) {
-    console.error('Unexpected error:', error);
-    res.status(500).json({ error: 'Unexpected error occurred' });
-  }
+  const query = `
+    INSERT INTO ${tableName} (
+      cert_number, 
+      job_number, 
+      customer_name, 
+      serial_number, 
+      brand_name, 
+      model_number, 
+      reading_range, 
+      calibrated_by, 
+      modified_date_time
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
+  `;
+
+  const values = [
+    cert_number,
+    jobNumber,
+    customerName,
+    serialNumber,
+    brandName,
+    modelNumber,
+    testRange,
+    calibratedBy,
+  ];
+
+  pool.query(query, values, (error, results) => {
+    if (error) {
+      console.error('Database insertion error:', error.message);
+      return res.status(500).json({ error: 'Failed to insert certification' });
+    }
+    res.status(201).json({ message: 'Certification inserted successfully' });
+  });
 });
+// app.post('/api/certifications', async (req, res) => {
+//   const {
+//     certificateType,
+//     jobNumber,
+//     customerName,
+//     serialNumber,
+//     brandName,
+//     modelNumber,
+//     testRange = null, // Allow null if not provided
+//     calibratedBy = 'Ryan', // Default value if empty
+//     cert_number
+//   } = req.body;
+
+
+//   let tableName;
+//   try {
+//     tableName = getTableName(certificateType); // Get the correct table name
+//   } catch (error) {
+//     return res.status(400).json({ error: error.message });
+//   }
+
+//   try {
+//     const query = `INSERT INTO ${tableName} (cert_number, job_number, customer_name, serial_number, brand_name, model_number, reading_range, calibrated_by, modified_date_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`;
+    
+//     // Use pool to perform the query
+//     pool.query(query, [cert_number, jobNumber, customerName, serialNumber, brandName, modelNumber, testRange, calibratedBy], (error, results) => {
+//       if (error) {
+//         console.error('Error inserting certification:', error);
+//         return res.status(500).json({ error: 'Failed to create certification' });
+//       }
+//       res.status(201).json({ message: 'Certification created successfully' });
+//     });
+//   } catch (error) {
+//     console.error('Unexpected error:', error);
+//     res.status(500).json({ error: 'Unexpected error occurred' });
+//   }
+// });
 
 
 // Endpoint to fetch the latest certificate
@@ -185,25 +194,6 @@ app.get('/api/latest-certificate', async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 });
-
-// // Endpoint to insert a new certification record
-// app.post('/api/certifications', async (req, res) => {
-//   const { certificateType, jobNumber, customerName, serialNumber, brandName, modelNumber, testRange, calibratedBy, cert_number } = req.body;
-//   const tableName = getTableName(certificateType);
-
-//   const query = `
-//     INSERT INTO ${mysql.escapeId(tableName)} (cert_number, job_number, customer_name, serial_number, brand_name, model_number, reading_range, calibrated_by, modified_date_time)
-//     VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())
-//   `;
-
-//   pool.query(query, [cert_number, jobNumber, customerName, serialNumber, brandName, modelNumber, testRange, calibratedBy], (error, results) => {
-//     if (error) {
-//       console.error('Error inserting new certification:', error);
-//       return res.status(500).json({ error: 'Failed to insert certification' });
-//     }
-//     res.json({ message: 'Certification inserted successfully', id: results.insertId });
-//   });
-// });
 
 
 // Example route to handle Singlas_On_Site table data

@@ -118,33 +118,39 @@ export default {
 
       // Set the correct prefix based on certificate type
       if (certificateType === 'Singlas Electrical') {
-        prefix = 'UNI-ELE-S';
+        prefix = 'ELE-25-S';
       } else if (certificateType === 'Singlas Temperature') {
-        prefix = 'UNI-TMP-S';
+        prefix = 'TMP-25-S';
       } else if (certificateType === 'Singlas Pressure') {
-        prefix = 'UNI-PRE-S';
+        prefix = 'PRE-25-S';
       } else if (certificateType === 'Electrical') {
-        prefix = 'UNI-ELE-';
+        prefix = 'ELE-25-';
       } else if (certificateType === 'Temperature') {
-        prefix = 'UNI-TMP-';
+        prefix = 'TMP-25-';
       } else if (certificateType === 'Pressure') {
-        prefix = 'UNI-PRE-';
+        prefix = 'PRE-25-';
       } else if (certificateType === 'Singlas On-site') {
-        prefix = 'UNI-SJ-S';
+        prefix = 'SJ-25-S';
       } else if (certificateType === 'Non Singlas On-Site') {
-        prefix = 'UNI-SJ-';
+        prefix = 'SJ-25-';
       }
 
-      // Extract numeric part of the certificate (e.g., "061" from "UNI-SJ-S061")
-      numberPart = cert.slice(prefix.length); // Remove prefix, extract number part
+      // Check if the existing cert starts with the expected prefix
+      if (cert.startsWith(prefix)) {
+        // Extract numeric part of the certificate (e.g., "400" from "ELE-25-S400")
+        numberPart = cert.slice(prefix.length); // Remove prefix, extract number part
 
-      // Ensure valid number part, default to "0" if invalid
-      let currentNumber = isNaN(numberPart) ? 0 : parseInt(numberPart, 10);
+        // Ensure valid number part, default to "0" if invalid
+        let currentNumber = isNaN(numberPart) ? 0 : parseInt(numberPart, 10);
 
-      // Increment number and pad with leading zeros (e.g., 001, 002, etc.)
-      const newNumber = (currentNumber + 1).toString().padStart(numberPart.length, '0');
+        // Increment number and pad with leading zeros (e.g., 401 becomes "401")
+        const newNumber = (currentNumber + 1).toString().padStart(numberPart.length, '0');
 
-      return `${prefix}${newNumber}`;
+        return `${prefix}${newNumber}`;
+      } else {
+        // If the cert does not match the expected prefix, start fresh
+        return `${prefix}001`;
+      }
     },
     async submitForm() {
       if (!this.generatedCert) {
@@ -154,17 +160,23 @@ export default {
 
       try {
         const baseUrl = process.env.VUE_APP_API_BASE_URL;
-        await axios.post(`${baseUrl}/api/certifications`, {
+
+        // Always use the certifications endpoint
+        const apiUrl = `${baseUrl}/api/certifications`;
+        console.log(`API URL: ${apiUrl}`);
+
+        // Make the API call to insert into the correct table
+        await axios.post(apiUrl, {
           ...this.formData,
           cert_number: this.generatedCert,
           testRange: this.formData.testRange || null,
           calibratedBy: this.formData.calibratedBy || null,
         });
-        console.log("Certification created successfully");
+
         this.$emit('refresh'); // Emit refresh event to refresh CertRegistry
         this.closeForm();
       } catch (error) {
-        console.error("Error creating certification:", error);
+        console.error("Error inserting into the certification table:", error);
       }
     },
   },
