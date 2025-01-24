@@ -24,8 +24,8 @@ const pool = mysql.createPool({
   queueLimit: 0,
 });
 
-
-// Export order to excel
+//test update
+// Export orders to Excel
 app.get('/api/export-orders', (req, res) => {
   const query = `
     SELECT
@@ -41,19 +41,59 @@ app.get('/api/export-orders', (req, res) => {
       om.model_number,
       om.tag_number,
       om.serial_number,
-      om.cert_number
+      om.cert_number,
+      e.cal_date,
+      e.due_date,
+      e.to_email_date
     FROM orders o
-    LEFT JOIN order_models om ON o.order_id = om.order_id;
+    LEFT JOIN order_models om ON o.order_id = om.order_id
+    LEFT JOIN emails e ON o.job_number = e.job_no;
   `;
 
   pool.query(query, (err, results) => {
     if (err) {
-      console.error('Error fetching order data:', err);
-      return res.status(500).json({ message: 'Error fetching order data' });
+      console.error('Error executing query:', err);
+      res.status(500).send('Error fetching orders.');
+    } else {
+      console.log('Export Orders Query Results:', results); // Log query results
+      res.json(results);
     }
-    res.json(results);
   });
 });
+
+// Other necessary middleware or APIs...
+app.listen(3000, () => {
+  console.log('Server is running on port 3000');
+});
+// // Export order to excel
+// app.get('/api/export-orders', (req, res) => {
+//   const query = `
+//     SELECT
+//       o.order_id,
+//       o.customer_name,
+//       o.order_type,
+//       o.modified_date_time,
+//       o.status,
+//       o.job_number,
+//       o.po_number,
+//       om.model_id,
+//       om.brand_name,
+//       om.model_number,
+//       om.tag_number,
+//       om.serial_number,
+//       om.cert_number
+//     FROM orders o
+//     LEFT JOIN order_models om ON o.order_id = om.order_id;
+//   `;
+
+//   pool.query(query, (err, results) => {
+//     if (err) {
+//       console.error('Error fetching order data:', err);
+//       return res.status(500).json({ message: 'Error fetching order data' });
+//     }
+//     res.json(results);
+//   });
+// });
 
 //helper map table
 function getTableName(certificateType) {
