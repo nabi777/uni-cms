@@ -3,10 +3,34 @@
     <table>
       <thead>
         <tr>
-          <th>ID</th>
-          <th>Name</th>
-          <th>Description</th>
-          <th>Modified Date & Time</th>
+          <th>
+            ID
+            <span class="sort-icon" @click="toggleSort('id')">
+              <span v-if="sortKey === 'id' && sortDirection === 'asc'">▲</span>
+              <span v-if="sortKey === 'id' && sortDirection === 'desc'">▼</span>
+            </span>
+          </th>
+          <th>
+            Name
+            <span class="sort-icon" @click="toggleSort('name')">
+              <span v-if="sortKey === 'name' && sortDirection === 'asc'">▲</span>
+              <span v-if="sortKey === 'name' && sortDirection === 'desc'">▼</span>
+            </span>
+          </th>
+          <th>
+            Description
+            <span class="sort-icon" @click="toggleSort('description')">
+              <span v-if="sortKey === 'description' && sortDirection === 'asc'">▲</span>
+              <span v-if="sortKey === 'description' && sortDirection === 'desc'">▼</span>
+            </span>
+          </th>
+          <th>
+            Modified Date & Time
+            <span class="sort-icon" @click="toggleSort('modified_date_time')">
+              <span v-if="sortKey === 'modified_date_time' && sortDirection === 'asc'">▲</span>
+              <span v-if="sortKey === 'modified_date_time' && sortDirection === 'desc'">▼</span>
+            </span>
+          </th>
           <th>Action</th>
         </tr>
       </thead>
@@ -48,8 +72,8 @@ export default {
   props: {
     searchQuery: {
       type: String,
-      default: ''
-    }
+      default: '',
+    },
   },
   data() {
     return {
@@ -57,12 +81,25 @@ export default {
       currentPage: 1,
       itemsPerPage: 5,
       dropdownVisible: null,
+      sortKey: 'id', // Default sorting key
+      sortDirection: 'desc', // Default sorting direction
     };
   },
   computed: {
+    sortedProducts() {
+      return [...this.filteredProducts].sort((a, b) => {
+        const valA = a[this.sortKey];
+        const valB = b[this.sortKey];
+        if (this.sortDirection === 'asc') {
+          return valA > valB ? 1 : valA < valB ? -1 : 0;
+        } else {
+          return valA < valB ? 1 : valA > valB ? -1 : 0;
+        }
+      });
+    },
     filteredProducts() {
       const lowercasedQuery = this.searchQuery.toLowerCase();
-      return this.products.filter(product => {
+      return this.products.filter((product) => {
         return (
           product.name.toLowerCase().includes(lowercasedQuery) ||
           (product.description || '').toLowerCase().includes(lowercasedQuery)
@@ -75,17 +112,25 @@ export default {
     paginatedProducts() {
       const start = (this.currentPage - 1) * this.itemsPerPage;
       const end = start + this.itemsPerPage;
-      return this.filteredProducts.slice(start, end);
-    }
+      return this.sortedProducts.slice(start, end);
+    },
   },
   methods: {
     async fetchProducts() {
       try {
-        const baseUrl = process.env.VUE_APP_API_BASE_URL
+        const baseUrl = process.env.VUE_APP_API_BASE_URL;
         const response = await axios.get(`${baseUrl}/api/products`);
-        this.products = response.data; // Update products array with the response data
+        this.products = response.data;
       } catch (error) {
         console.error('Error fetching products:', error);
+      }
+    },
+    toggleSort(key) {
+      if (this.sortKey === key) {
+        this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        this.sortKey = key;
+        this.sortDirection = 'asc';
       }
     },
     nextPage() {
@@ -122,21 +167,21 @@ export default {
     async deleteProduct(productId) {
       if (confirm('Are you sure you want to delete this product?')) {
         try {
-          const baseUrl = process.env.VUE_APP_API_BASE_URL
+          const baseUrl = process.env.VUE_APP_API_BASE_URL;
           await axios.delete(`${baseUrl}/api/products/${productId}`);
           this.fetchProducts(); // Refresh the list after deletion
         } catch (error) {
           console.error('Error deleting product:', error);
         }
       }
-    }
+    },
   },
   mounted() {
     this.fetchProducts(); // Fetch products when the component is mounted
   },
   beforeUnmount() {
     document.removeEventListener('click', this.handleOutsideClick);
-  }
+  },
 };
 </script>
 
@@ -158,10 +203,21 @@ thead {
   background-color: #f8f9fa;
 }
 
-th, td {
+th,
+td {
   padding: 10px;
   border: 1px solid #dee2e6;
   text-align: left;
+}
+
+.sort-icon {
+  cursor: pointer;
+  font-size: 16px;
+  margin-left: 5px;
+}
+
+.sort-icon:hover {
+  color: #007bff;
 }
 
 .action-btn {

@@ -9,7 +9,13 @@
       <table>
         <thead>
           <tr>
-            <th>Order ID</th>
+            <th>
+              Order ID
+              <span class="sort-icon" @click="toggleSort">
+                <span v-if="sortDirection === 'asc'">▲</span>
+                <span v-else>▼</span>
+              </span>
+            </th>
             <th>Customer Name</th>
             <th>Order Type</th>
             <th>Modified Date & Time</th>
@@ -40,7 +46,7 @@
 
       <div class="table-footer">
         <div class="total-items">
-          Total {{ filteredOrders.length }} items
+          Total {{ sortedOrders.length }} items
         </div>
         <div class="pagination">
           <button @click="prevPage" :disabled="currentPage === 1">← Prev</button>
@@ -83,9 +89,20 @@ export default {
       dropdownVisible: null,
       showCalibrationForm: false,
       selectedOrderId: null,
+      sortDirection: 'desc', // Track sorting direction for Order ID
     };
   },
   computed: {
+    sortedOrders() {
+      // Sort the full list of filtered orders
+      return [...this.filteredOrders].sort((a, b) => {
+        if (this.sortDirection === 'asc') {
+          return a.order_id - b.order_id;
+        } else {
+          return b.order_id - a.order_id;
+        }
+      });
+    },
     filteredOrders() {
       const lowercasedQuery = this.searchQuery.toLowerCase();
       return this.orders.filter((order) => {
@@ -96,15 +113,18 @@ export default {
       });
     },
     totalPages() {
-      return Math.ceil(this.filteredOrders.length / this.itemsPerPage);
+      return Math.ceil(this.sortedOrders.length / this.itemsPerPage);
     },
     paginatedOrders() {
       const start = (this.currentPage - 1) * this.itemsPerPage;
       const end = start + this.itemsPerPage;
-      return this.filteredOrders.slice(start, end);
+      return this.sortedOrders.slice(start, end); // Apply pagination after sorting
     },
   },
   methods: {
+    toggleSort() {
+      this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+    },
     async fetchOrders() {
       try {
         const baseUrl = process.env.VUE_APP_API_BASE_URL;
@@ -114,16 +134,49 @@ export default {
         console.error('Error fetching orders:', error);
       }
     },
-    async deleteOrder(orderId) {
-      if (confirm(`Are you sure you want to delete order with ID: ${orderId}?`)) {
-        try {
-          const baseUrl = process.env.VUE_APP_API_BASE_URL;
-          await axios.delete(`${baseUrl}/api/orders/${orderId}`);
-          this.orders = this.orders.filter((order) => order.order_id !== orderId);
-        } catch (error) {
-          console.error('Error deleting order:', error);
-          alert('Failed to delete the order. Please try again.');
-        }
+    exportToExcel() {
+  axios
+    .get(`${process.env.VUE_APP_API_BASE_URL}/api/export-orders`)
+    .then((response) => {
+      const exportData = response.data.map((entry) => ({
+        'Order ID': entry.order_id,
+        'Customer Name': entry.customer_name,
+        'Order Type': entry.order_type,
+        'Modified Date & Time': entry.modified_date_time,
+        Status: entry.status || 'Pending',
+        'Job Number': entry.job_number || 'N/A',
+        'PO Number': entry.po_number || 'N/A',
+        'Brand Name': entry.brand_name,
+        'Model Number': entry.model_number,
+        'Tag Number': entry.tag_number,
+        'Serial Number': entry.serial_number,
+        'Cert Number': entry.cert_number,
+        'Calibration Date': entry.cal_date ? new Date(entry.cal_date).toLocaleDateString() : 'N/A',
+        'Due Date': entry.due_date ? new Date(entry.due_date).toLocaleDateString() : 'N/A',
+        'To Email Date': entry.to_email_date ? new Date(entry.to_email_date).toLocaleDateString() : 'N/A',
+      }));
+
+      // Generate Excel File
+      const ws = XLSX.utils.json_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Orders and Models');
+
+      // Manually specify the file name
+      const fileName = 'Orders_and_Models.xlsx';
+      XLSX.writeFile(wb, fileName); // Ensures the file is saved with the correct name
+    })
+    .catch((error) => {
+      console.error('Error exporting data:', error);
+    });
+},
+    prevPage() {
+      if (this.currentPage > 1) {
+        this.currentPage--;
+      }
+    },
+    nextPage() {
+      if (this.currentPage < this.totalPages) {
+        this.currentPage++;
       }
     },
     toggleDropdown(index) {
@@ -158,58 +211,9 @@ export default {
       console.log('Submitted calibration details:', formData);
       this.showCalibrationForm = false;
     },
-    submitOrder(order) {
-      alert(`Submitting order with ID: ${order.order_id}`);
-      order.status = 'Submitted';
-    },
-    prevPage() {
-      if (this.currentPage > 1) {
-        this.currentPage--;
-      }
-    },
-    nextPage() {
-      if (this.currentPage < this.totalPages) {
-        this.currentPage++;
-      }
-    },
-
-    // Export to Excel function
-    exportToExcel() {
-  axios
-    .get(`${process.env.VUE_APP_API_BASE_URL}/api/export-orders`)
-    .then((response) => {
-      // Process the response data for export
-      const exportData = response.data.map((entry) => ({
-        'Order ID': entry.order_id,
-        'Customer Name': entry.customer_name,
-        'Order Type': entry.order_type,
-        'Modified Date & Time': entry.modified_date_time,
-        'Status': entry.status || 'Pending',
-        'Job Number': entry.job_number || 'N/A',  // Job number from orders table
-        'PO Number': entry.po_number || 'N/A',    // PO number from orders table
-        'Brand Name': entry.brand_name,
-        'Model Number': entry.model_number,
-        'Tag Number': entry.tag_number,
-        'Serial Number': entry.serial_number,
-        'Cert Number': entry.cert_number,
-      }));
-
-      // Create a worksheet from the data
-      const ws = XLSX.utils.json_to_sheet(exportData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Orders and Models');
-      XLSX.writeFile(wb, 'Orders_and_Models.xlsx');
-    })
-    .catch((error) => {
-      console.error('Error exporting data:', error);
-    });
-      },
   },
   mounted() {
     this.fetchOrders();
-  },
-  beforeUnmount() {
-    document.removeEventListener('click', this.handleOutsideClick);
   },
 };
 </script>
@@ -257,6 +261,16 @@ td {
   padding: 10px;
   border: 1px solid #dee2e6;
   text-align: left;
+}
+
+.sort-icon {
+  cursor: pointer;
+  font-size: 16px;
+  margin-left: 5px;
+}
+
+.sort-icon:hover {
+  color: #007bff;
 }
 
 .action-btn {

@@ -3,10 +3,34 @@
     <table>
       <thead>
         <tr>
-          <th>Model ID</th>
-          <th>Model Number</th>
-          <th>Brand Name</th>
-          <th>Modified Date & Time</th>
+          <th>
+            Model ID
+            <span class="sort-icon" @click="toggleSort('model_id')">
+              <span v-if="sortKey === 'model_id' && sortDirection === 'asc'">▲</span>
+              <span v-if="sortKey === 'model_id' && sortDirection === 'desc'">▼</span>
+            </span>
+          </th>
+          <th>
+            Model Number
+            <span class="sort-icon" @click="toggleSort('model_number')">
+              <span v-if="sortKey === 'model_number' && sortDirection === 'asc'">▲</span>
+              <span v-if="sortKey === 'model_number' && sortDirection === 'desc'">▼</span>
+            </span>
+          </th>
+          <th>
+            Brand Name
+            <span class="sort-icon" @click="toggleSort('brand_name')">
+              <span v-if="sortKey === 'brand_name' && sortDirection === 'asc'">▲</span>
+              <span v-if="sortKey === 'brand_name' && sortDirection === 'desc'">▼</span>
+            </span>
+          </th>
+          <th>
+            Modified Date & Time
+            <span class="sort-icon" @click="toggleSort('modified_date_time')">
+              <span v-if="sortKey === 'modified_date_time' && sortDirection === 'asc'">▲</span>
+              <span v-if="sortKey === 'modified_date_time' && sortDirection === 'desc'">▼</span>
+            </span>
+          </th>
           <th>Action</th>
         </tr>
       </thead>
@@ -48,8 +72,8 @@ export default {
   props: {
     searchQuery: {
       type: String,
-      default: ''
-    }
+      default: '',
+    },
   },
   data() {
     return {
@@ -57,12 +81,25 @@ export default {
       currentPage: 1,
       itemsPerPage: 5,
       dropdownVisible: null, // To track which dropdown is visible
+      sortKey: 'model_id', // Default sorting key
+      sortDirection: 'desc', // Default sorting direction
     };
   },
   computed: {
+    sortedModels() {
+      return [...this.filteredModels].sort((a, b) => {
+        const valA = a[this.sortKey];
+        const valB = b[this.sortKey];
+        if (this.sortDirection === 'asc') {
+          return valA > valB ? 1 : valA < valB ? -1 : 0;
+        } else {
+          return valA < valB ? 1 : valA > valB ? -1 : 0;
+        }
+      });
+    },
     filteredModels() {
       const lowercasedQuery = this.searchQuery.toLowerCase();
-      return this.models.filter(model => {
+      return this.models.filter((model) => {
         const modelNumber = model.model_number ? model.model_number.toLowerCase() : '';
         const brandName = model.brand_name ? model.brand_name.toLowerCase() : '';
         return modelNumber.includes(lowercasedQuery) || brandName.includes(lowercasedQuery);
@@ -74,14 +111,13 @@ export default {
     paginatedModels() {
       const start = (this.currentPage - 1) * this.itemsPerPage;
       const end = start + this.itemsPerPage;
-      return this.filteredModels.slice(start, end);
-    }
+      return this.sortedModels.slice(start, end);
+    },
   },
   methods: {
     async fetchModels() {
       try {
-        const baseUrl = process.env.VUE_APP_API_BASE_URL
-
+        const baseUrl = process.env.VUE_APP_API_BASE_URL;
         const response = await axios.get(`${baseUrl}/api/models`);
         this.models = response.data;
       } catch (error) {
@@ -116,27 +152,35 @@ export default {
         this.closeDropdown();
       }
     },
+    toggleSort(key) {
+      if (this.sortKey === key) {
+        this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        this.sortKey = key;
+        this.sortDirection = 'asc';
+      }
+    },
     editModel(model) {
       this.$emit('edit-model', model); // Emit the model data to the parent component
     },
     async deleteModel(modelId) {
       if (confirm('Are you sure you want to delete this model?')) {
         try {
-          const baseUrl = process.env.VUE_APP_API_BASE_URL
+          const baseUrl = process.env.VUE_APP_API_BASE_URL;
           await axios.delete(`${baseUrl}/api/models/${modelId}`);
           this.fetchModels(); // Refresh the list after deletion
         } catch (error) {
           console.error('Error deleting model:', error);
         }
       }
-    }
+    },
   },
   mounted() {
     this.fetchModels(); // Fetch models when the component is mounted
   },
   beforeUnmount() {
     document.removeEventListener('click', this.handleOutsideClick);
-  }
+  },
 };
 </script>
 
@@ -158,10 +202,21 @@ thead {
   background-color: #f8f9fa;
 }
 
-th, td {
+th,
+td {
   padding: 10px;
   border: 1px solid #dee2e6;
   text-align: left;
+}
+
+.sort-icon {
+  cursor: pointer;
+  font-size: 16px;
+  margin-left: 5px;
+}
+
+.sort-icon:hover {
+  color: #007bff;
 }
 
 .action-btn {

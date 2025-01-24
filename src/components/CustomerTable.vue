@@ -3,14 +3,38 @@
     <table>
       <thead>
         <tr>
-          <th>ID</th>
-          <th>Company Name</th>
+          <th>
+            ID
+            <span class="sort-icon" @click="toggleSort('id')">
+              <span v-if="sortKey === 'id' && sortDirection === 'asc'">▲</span>
+              <span v-if="sortKey === 'id' && sortDirection === 'desc'">▼</span>
+            </span>
+          </th>
+          <th>
+            Company Name
+            <span class="sort-icon" @click="toggleSort('company_name')">
+              <span v-if="sortKey === 'company_name' && sortDirection === 'asc'">▲</span>
+              <span v-if="sortKey === 'company_name' && sortDirection === 'desc'">▼</span>
+            </span>
+          </th>
           <th>UEN</th>
-          <th>Address</th>
+          <th>
+            Address
+            <span class="sort-icon" @click="toggleSort('address')">
+              <span v-if="sortKey === 'address' && sortDirection === 'asc'">▲</span>
+              <span v-if="sortKey === 'address' && sortDirection === 'desc'">▼</span>
+            </span>
+          </th>
           <th>Contact Name</th>
           <th>Phone Number</th>
           <th>Email</th>
-          <th>Modified Date & Time</th>
+          <th>
+            Modified Date & Time
+            <span class="sort-icon" @click="toggleSort('modified_date_time')">
+              <span v-if="sortKey === 'modified_date_time' && sortDirection === 'asc'">▲</span>
+              <span v-if="sortKey === 'modified_date_time' && sortDirection === 'desc'">▼</span>
+            </span>
+          </th>
           <th>Action</th>
         </tr>
       </thead>
@@ -65,9 +89,22 @@ export default {
       currentPage: 1,
       itemsPerPage: 5,
       dropdownVisible: null,
+      sortKey: 'id', // Default sorting key
+      sortDirection: 'desc', // Default sorting direction
     };
   },
   computed: {
+    sortedCustomers() {
+      return [...this.filteredCustomers].sort((a, b) => {
+        const valA = a[this.sortKey];
+        const valB = b[this.sortKey];
+        if (this.sortDirection === 'asc') {
+          return valA > valB ? 1 : valA < valB ? -1 : 0;
+        } else {
+          return valA < valB ? 1 : valA > valB ? -1 : 0;
+        }
+      });
+    },
     filteredCustomers() {
       const lowercasedQuery = this.searchQuery.toLowerCase();
       return this.customers.filter((customer) => {
@@ -85,18 +122,25 @@ export default {
     paginatedCustomers() {
       const start = (this.currentPage - 1) * this.itemsPerPage;
       const end = start + this.itemsPerPage;
-      return this.filteredCustomers.slice(start, end);
+      return this.sortedCustomers.slice(start, end);
     },
   },
   methods: {
     async fetchCustomers() {
       try {
-        const baseUrl = process.env.VUE_APP_API_BASE_URL
+        const baseUrl = process.env.VUE_APP_API_BASE_URL;
         const response = await axios.get(`${baseUrl}/api/customers`);
         this.customers = response.data;
-        console.log(response.data); // Log the response to inspect the structure
       } catch (error) {
         console.error('Error fetching customers:', error);
+      }
+    },
+    toggleSort(key) {
+      if (this.sortKey === key) {
+        this.sortDirection = this.sortDirection === 'asc' ? 'desc' : 'asc';
+      } else {
+        this.sortKey = key;
+        this.sortDirection = 'asc';
       }
     },
     nextPage() {
@@ -133,7 +177,7 @@ export default {
     async deleteCustomer(customerId) {
       if (confirm('Are you sure you want to delete this customer?')) {
         try {
-          const baseUrl = process.env.VUE_APP_API_BASE_URL
+          const baseUrl = process.env.VUE_APP_API_BASE_URL;
           await axios.delete(`${baseUrl}/api/customers/${customerId}`);
           this.fetchCustomers(); // Refresh the list after deletion
         } catch (error) {
@@ -143,7 +187,7 @@ export default {
     },
   },
   mounted() {
-    this.fetchCustomers(); // Fetch customers when the component is mounted
+    this.fetchCustomers();
   },
   beforeUnmount() {
     document.removeEventListener('click', this.handleOutsideClick);
@@ -169,10 +213,21 @@ thead {
   background-color: #f8f9fa;
 }
 
-th, td {
+th,
+td {
   padding: 10px;
   border: 1px solid #dee2e6;
   text-align: left;
+}
+
+.sort-icon {
+  cursor: pointer;
+  font-size: 16px;
+  margin-left: 5px;
+}
+
+.sort-icon:hover {
+  color: #007bff;
 }
 
 .action-btn {
