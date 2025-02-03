@@ -24,6 +24,70 @@ const pool = mysql.createPool({
   queueLimit: 0,
 });
 
+
+//export certs
+
+// Allowed certificate types (whitelist)
+const allowedCertTypes = [
+  'Singlas_Electrical',
+  'Singlas_Temperature',
+  'Singlas_Pressure',
+  'Non_Singlas_Electrical',
+  'Non_Singlas_Temperature',
+  'Non_Singlas_Pressure',
+  'Singlas_On_Site',
+  'Non_Singlas_On_Site'
+];
+
+app.get('/api/export', async (req, res) => {
+  // Get the cert_type from the query parameters
+  const certType = req.query.cert_type;
+  if (!certType) {
+    return res.status(400).json({ error: 'Missing cert_type parameter' });
+  }
+
+  // Validate that certType is allowed
+  if (!allowedCertTypes.includes(certType)) {
+    return res.status(400).json({ error: 'Invalid cert_type parameter' });
+  }
+
+  // Build the query string.
+  // We use "??" to safely inject the table name (certType).
+  const query = `
+    SELECT 
+      t.id,
+      t.cert_number,
+      t.brand_name,
+      t.model_number,
+      t.reading_range,
+      t.job_number,
+      t.serial_number,
+      t.customer_name,
+      t.calibrated_by,
+      t.void_status,
+      t.modified_date_time,
+      e.cal_date,
+      e.due_date,
+      e.to_email_date
+    FROM ?? AS t
+    LEFT JOIN emails AS e ON t.job_number = e.job_no
+  `;
+
+  try {
+    // Use pool.query to execute the query with the table name passed as an identifier.
+    pool.query(query, [certType], (err, rows) => {
+      if (err) {
+        console.error('Error executing query:', err);
+        return res.status(500).json({ error: 'Internal server error' });
+      }
+      return res.json(rows);
+    });
+  } catch (err) {
+    console.error('Error executing query:', err);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 //test update
 // Export orders to Excel
 app.get('/api/export-orders', (req, res) => {
@@ -61,39 +125,6 @@ app.get('/api/export-orders', (req, res) => {
   });
 });
 
-// Other necessary middleware or APIs...
-app.listen(3000, () => {
-  console.log('Server is running on port 3000');
-});
-// // Export order to excel
-// app.get('/api/export-orders', (req, res) => {
-//   const query = `
-//     SELECT
-//       o.order_id,
-//       o.customer_name,
-//       o.order_type,
-//       o.modified_date_time,
-//       o.status,
-//       o.job_number,
-//       o.po_number,
-//       om.model_id,
-//       om.brand_name,
-//       om.model_number,
-//       om.tag_number,
-//       om.serial_number,
-//       om.cert_number
-//     FROM orders o
-//     LEFT JOIN order_models om ON o.order_id = om.order_id;
-//   `;
-
-//   pool.query(query, (err, results) => {
-//     if (err) {
-//       console.error('Error fetching order data:', err);
-//       return res.status(500).json({ message: 'Error fetching order data' });
-//     }
-//     res.json(results);
-//   });
-// });
 
 //helper map table
 function getTableName(certificateType) {

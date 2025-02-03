@@ -133,12 +133,21 @@ export default {
       this.currentPage = 1;
     },
     async loadTableData(tableName) {
-      this.activeTable = tableName.replace(/_/g, ' ');  // Format table name
+      // Log the click event immediately
+      console.log(`Button clicked: ${tableName}`);
+
+      // Set the session variable "cert_type" to the tableName
+      sessionStorage.setItem('cert_type', tableName);
+      console.log('cert_type set to:', tableName);
+
+      // Update activeTable (display-friendly) and clear previous data
+      this.activeTable = tableName.replace(/_/g, ' ');
       this.tableData = [];
       try {
         const response = await axios.get(`${this.baseUrl}/api/${tableName}`);
         this.tableData = response.data || [];
         this.currentPage = 1;
+        console.log('Data loaded:', this.tableData);
       } catch (error) {
         console.error(`Error loading data from ${tableName}:`, error);
         this.tableData = [];
@@ -164,11 +173,51 @@ export default {
       }
     },
     exportToExcel() {
-      const tableName = this.activeTable.replace(/ /g, '_').toLowerCase();
-      const ws = XLSX.utils.json_to_sheet(this.tableData);
-      const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, tableName);
-      XLSX.writeFile(wb, `${tableName}.xlsx`);
+      // Retrieve the cert_type from sessionStorage
+      const certType = sessionStorage.getItem('cert_type');
+      if (!certType) {
+        console.error('No cert_type set. Please select a table first.');
+        return;
+      }
+      
+      // Build the API endpoint with cert_type as a query parameter.
+      // Your backend should use this parameter to select the correct table
+      // and join with the emails table where job_number = e.job_no.
+      const exportEndpoint = `${this.baseUrl}/api/export?cert_type=${certType}`;
+      
+      axios.get(exportEndpoint)
+        .then(response => {
+          // Map the response data to the desired fields.
+          // We expect response data to include the following fields:
+          // id, cert_number, brand_name, model_number, reading_range, job_number,
+          // serial_number, customer_name, calibrated_by, void_status, modified_date_time,
+          // cal_date, due_date, to_email_date.
+          const exportData = response.data.map(entry => ({
+            id: entry.id,
+            cert_number: entry.cert_number,
+            brand_name: entry.brand_name,
+            model_number: entry.model_number,
+            reading_range: entry.reading_range,
+            job_number: entry.job_number,
+            serial_number: entry.serial_number,
+            customer_name: entry.customer_name,
+            calibrated_by: entry.calibrated_by,
+            void_status: entry.void_status,
+            modified_date_time: entry.modified_date_time,
+            cal_date: entry.cal_date ? new Date(entry.cal_date).toLocaleDateString() : 'N/A',
+            due_date: entry.due_date ? new Date(entry.due_date).toLocaleDateString() : 'N/A',
+            to_email_date: entry.to_email_date ? new Date(entry.to_email_date).toLocaleDateString() : 'N/A'
+          }));
+          
+          // Generate Excel File
+          const ws = XLSX.utils.json_to_sheet(exportData);
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, certType);
+          XLSX.writeFile(wb, `${certType}.xlsx`);
+        })
+        .catch(error => {
+          console.error('Error exporting data:', error);
+        });
     },
   },
 };
