@@ -1,3 +1,4 @@
+// 3/2/2025 clean port listener
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
@@ -25,7 +26,6 @@ const pool = mysql.createPool({
 });
 
 
-//export certs
 
 // Allowed certificate types (whitelist)
 const allowedCertTypes = [
@@ -38,6 +38,45 @@ const allowedCertTypes = [
   'Singlas_On_Site',
   'Non_Singlas_On_Site'
 ];
+
+// void cert
+app.put('/api/void/:cert_type/:id', (req, res) => {
+  const { cert_type, id } = req.params;
+  const { voidStatus } = req.body;
+
+  // Allowed table names to prevent SQL Injection
+  const allowedTables = [
+    'Singlas_Electrical',
+    'Singlas_Temperature',
+    'Singlas_Pressure',
+    'Non_Singlas_Electrical',
+    'Non_Singlas_Temperature',
+    'Non_Singlas_Pressure'
+  ];
+
+  if (!allowedTables.includes(cert_type)) {
+    return res.status(400).json({ message: 'Invalid cert_type' });
+  }
+
+  const query = `UPDATE \`${cert_type}\` SET void_status = ? WHERE id = ?`;
+
+  pool.query(query, [voidStatus, id], (error, results) => {
+    if (error) {
+      console.error('Error voiding certificate:', error.message);
+      return res.status(500).json({ message: 'Internal server error' });
+    }
+
+    if (results.affectedRows === 0) {
+      return res.status(404).json({ message: 'Certificate not found' });
+    }
+
+    res.json({ message: 'Void successful', updated: results });
+  });
+});
+
+
+
+
 
 app.get('/api/export', async (req, res) => {
   // Get the cert_type from the query parameters
