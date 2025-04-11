@@ -63,6 +63,7 @@
             <option value="Calibration">Calibration</option>
             <option value="Repair">Repair</option>
             <option value="Purchase">Purchase</option>
+            <option value="In-house-calibration">In-house-calibration</option>
           </select>
         </div>
 

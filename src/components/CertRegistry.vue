@@ -60,7 +60,7 @@
               <button @click="handleEdit(entry)" class="action-btn edit-btn" :disabled="true">
                 Edit
               </button>
-              <button @click="voidEntry(entry)" class="action-btn void-btn" :disabled="true">
+              <button @click="voidEntry(entry)" class="action-btn void-btn" :disabled="false">
                 Void
               </button>
             </td>
@@ -170,6 +170,17 @@ export default {
     async voidEntry(entry) {
       if (confirm(`Are you sure you want to void this entry with Cert Number: ${entry.cert_number}?`)) {
         console.log(`Voiding entry with Cert Number: ${entry.cert_number}`);
+        try {
+          const certType = sessionStorage.getItem('cert_type'); // or from entry directly if available
+          console.log(`${this.baseUrl}/api/void/${certType}/${entry.id}`);  // Log the URL to see if it matches
+
+          // Ensure certType is passed as part of the URL
+          await axios.put(`${this.baseUrl}/api/void/${certType}/${entry.id}`, { voidStatus: 'Voided' });
+          // Reload table data
+          this.loadTableData(certType);
+        } catch (error) {
+          console.error('Error voiding entry:', error);
+        }
       }
     },
     exportToExcel() {
