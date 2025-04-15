@@ -15,6 +15,8 @@
       <button @click="loadTableData('Non_Singlas_Electrical')">Non Singlas Electrical</button>
       <button @click="loadTableData('Non_Singlas_Temperature')">Non Singlas Temperature</button>
       <button @click="loadTableData('Non_Singlas_Pressure')">Non Singlas Pressure</button>
+      
+      <!-- New buttons for "Singlas On-site" and "Non Singlas On-Site" -->
       <button @click="loadTableData('Singlas_On_Site')" class="purple-btn">Singlas On-site</button>
       <button @click="loadTableData('Non_Singlas_On_Site')" class="purple-btn">Non Singlas On-Site</button>
     </div>
@@ -54,8 +56,13 @@
             <td>{{ entry.void_status }}</td>
             <td>{{ entry.modified_date_time }}</td>
             <td>
-              <button @click="handleEdit(entry)" class="action-btn edit-btn">Edit</button>
-              <button @click="voidEntry(entry)" class="action-btn void-btn">Void</button>
+              <!-- Buttons disabled for now -->
+              <button @click="handleEdit(entry)" class="action-btn edit-btn" :disabled="true">
+                Edit
+              </button>
+              <button @click="voidEntry(entry)" class="action-btn void-btn" :disabled="false">
+                Void
+              </button>
             </td>
           </tr>
         </tbody>
@@ -63,7 +70,9 @@
 
       <!-- Pagination Controls -->
       <div class="table-footer">
-        <div class="total-items">Total {{ filteredEntries.length }} items</div>
+        <div class="total-items">
+          Total {{ filteredEntries.length }} items
+        </div>
         <div class="pagination">
           <button @click="prevPage" :disabled="currentPage === 1">← Prev</button>
           <button @click="nextPage" :disabled="currentPage === totalPages">Next →</button>
@@ -75,28 +84,18 @@
       <h2>{{ activeTable }}</h2>
       <p>No data available for this table.</p>
     </div>
-
-    <!-- Edit Form Slide-in -->
-    <EditCertForm
-      v-if="showEditForm"
-      :certData="selectedCert"
-      @close="closeEditForm"
-      @refresh="refreshTable"
-    />
   </div>
 </template>
 
 <script>
 import SearchBar from './SearchBar.vue';
-import EditCertForm from './EditCertForm.vue';
 import axios from 'axios';
-import * as XLSX from 'xlsx';
+import * as XLSX from 'xlsx';  // Import xlsx for Excel file generation
 
 export default {
   name: 'CertRegistry',
   components: {
     SearchBar,
-    EditCertForm,
   },
   data() {
     return {
@@ -106,8 +105,6 @@ export default {
       query: '',
       currentPage: 1,
       itemsPerPage: 5,
-      showEditForm: false,
-      selectedCert: null,
     };
   },
   computed: {
@@ -122,8 +119,12 @@ export default {
       return Math.ceil(this.filteredEntries.length / this.itemsPerPage);
     },
     paginatedEntries() {
-      const start = (this.currentPage - 1) * this.itemsPerPage;
-      return this.filteredEntries.slice(start, start + this.itemsPerPage);
+      if (this.filteredEntries.length) {
+        const start = (this.currentPage - 1) * this.itemsPerPage;
+        const end = start + this.itemsPerPage;
+        return this.filteredEntries.slice(start, end);
+      }
+      return [];
     },
   },
   methods: {
@@ -132,43 +133,50 @@ export default {
       this.currentPage = 1;
     },
     async loadTableData(tableName) {
+      // Log the click event immediately
+      console.log(`Button clicked: ${tableName}`);
+
+      // Set the session variable "cert_type" to the tableName
       sessionStorage.setItem('cert_type', tableName);
+      console.log('cert_type set to:', tableName);
+
+      // Update activeTable (display-friendly) and clear previous data
       this.activeTable = tableName.replace(/_/g, ' ');
       this.tableData = [];
       try {
         const response = await axios.get(`${this.baseUrl}/api/${tableName}`);
         this.tableData = response.data || [];
         this.currentPage = 1;
+        console.log('Data loaded:', this.tableData);
       } catch (error) {
         console.error(`Error loading data from ${tableName}:`, error);
         this.tableData = [];
       }
     },
     nextPage() {
-      if (this.currentPage < this.totalPages) this.currentPage++;
+      if (this.currentPage < this.totalPages) {
+        this.currentPage++;
+      }
     },
     prevPage() {
-      if (this.currentPage > 1) this.currentPage--;
+      if (this.currentPage > 1) {
+        this.currentPage--;
+      }
     },
     handleEdit(entry) {
-      this.selectedCert = { ...entry };
-      this.showEditForm = true;
-    },
-    closeEditForm() {
-      this.showEditForm = false;
-      this.selectedCert = null;
-    },
-    refreshTable() {
-      const certType = sessionStorage.getItem('cert_type');
-      if (certType) this.loadTableData(certType);
+      console.log('Attempting to emit edit event with entry:', entry);
+      this.$emit('edit', entry); // Emit edit event with entry data
     },
     async voidEntry(entry) {
-      if (confirm(`Void Cert Number: ${entry.cert_number}?`)) {
+      if (confirm(`Are you sure you want to void this entry with Cert Number: ${entry.cert_number}?`)) {
+        console.log(`Voiding entry with Cert Number: ${entry.cert_number}`);
         try {
-          const certType = sessionStorage.getItem('cert_type');
-          await axios.put(`${this.baseUrl}/api/void/${certType}/${entry.id}`, {
-            voidStatus: 'Voided',
-          });
+          const certType = sessionStorage.getItem('cert_type'); // or from entry directly if available
+          console.log(`${this.baseUrl}/api/void/${certType}/${entry.id}`);  // Log the URL to see if it matches
+
+          // Ensure certType is passed as part of the URL
+          await axios.put(`${this.baseUrl}/api/void/${certType}/${entry.id}`, { voidStatus: 'Voided' });
+          // Reload table data
           this.loadTableData(certType);
         } catch (error) {
           console.error('Error voiding entry:', error);
@@ -176,38 +184,55 @@ export default {
       }
     },
     exportToExcel() {
+      // Retrieve the cert_type from sessionStorage
       const certType = sessionStorage.getItem('cert_type');
-      if (!certType) return;
-
-      axios.get(`${this.baseUrl}/api/export?cert_type=${certType}`).then(response => {
-        const exportData = response.data.map(entry => ({
-          id: entry.id,
-          cert_number: entry.cert_number,
-          brand_name: entry.brand_name,
-          model_number: entry.model_number,
-          reading_range: entry.reading_range,
-          job_number: entry.job_number,
-          serial_number: entry.serial_number,
-          customer_name: entry.customer_name,
-          calibrated_by: entry.calibrated_by,
-          void_status: entry.void_status,
-          modified_date_time: entry.modified_date_time,
-          cal_date: entry.cal_date ? new Date(entry.cal_date).toLocaleDateString() : 'N/A',
-          due_date: entry.due_date ? new Date(entry.due_date).toLocaleDateString() : 'N/A',
-          to_email_date: entry.to_email_date ? new Date(entry.to_email_date).toLocaleDateString() : 'N/A'
-        }));
-        const ws = XLSX.utils.json_to_sheet(exportData);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, certType);
-        XLSX.writeFile(wb, `${certType}.xlsx`);
-      }).catch(error => {
-        console.error('Error exporting data:', error);
-      });
+      if (!certType) {
+        console.error('No cert_type set. Please select a table first.');
+        return;
+      }
+      
+      // Build the API endpoint with cert_type as a query parameter.
+      // Your backend should use this parameter to select the correct table
+      // and join with the emails table where job_number = e.job_no.
+      const exportEndpoint = `${this.baseUrl}/api/export?cert_type=${certType}`;
+      
+      axios.get(exportEndpoint)
+        .then(response => {
+          // Map the response data to the desired fields.
+          // We expect response data to include the following fields:
+          // id, cert_number, brand_name, model_number, reading_range, job_number,
+          // serial_number, customer_name, calibrated_by, void_status, modified_date_time,
+          // cal_date, due_date, to_email_date.
+          const exportData = response.data.map(entry => ({
+            id: entry.id,
+            cert_number: entry.cert_number,
+            brand_name: entry.brand_name,
+            model_number: entry.model_number,
+            reading_range: entry.reading_range,
+            job_number: entry.job_number,
+            serial_number: entry.serial_number,
+            customer_name: entry.customer_name,
+            calibrated_by: entry.calibrated_by,
+            void_status: entry.void_status,
+            modified_date_time: entry.modified_date_time,
+            cal_date: entry.cal_date ? new Date(entry.cal_date).toLocaleDateString() : 'N/A',
+            due_date: entry.due_date ? new Date(entry.due_date).toLocaleDateString() : 'N/A',
+            to_email_date: entry.to_email_date ? new Date(entry.to_email_date).toLocaleDateString() : 'N/A'
+          }));
+          
+          // Generate Excel File
+          const ws = XLSX.utils.json_to_sheet(exportData);
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, certType);
+          XLSX.writeFile(wb, `${certType}.xlsx`);
+        })
+        .catch(error => {
+          console.error('Error exporting data:', error);
+        });
     },
   },
 };
 </script>
-
 
 <style scoped>
 .cert-registry {
