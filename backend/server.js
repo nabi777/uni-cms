@@ -1,29 +1,59 @@
+// server.js
 // 3/2/2025 clean port listener
 const express = require('express');
 const mysql = require('mysql2');
 const cors = require('cors');
-const app = express();
-const port = 3001; //previously 3000
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const formatDatesToSGT = require('./utils/format-dates-sgt'); // ✅ Add this line
+
+const app = express();
+const port = 3001; // previously 3000
 
 app.use(cors());
 app.use(express.json()); // Middleware to parse JSON bodies
 
 // Create MySQL connection pool with connection management
 const pool = mysql.createPool({
-  host: 'database-1.cr4iuy8yuyzn.ap-southeast-1.rds.amazonaws.com', // or your database host if different
+  host: 'database-1.cr4iuy8yuyzn.ap-southeast-1.rds.amazonaws.com', // RDS host
   user: 'admin',
   password: '1B2Lj1wbKAJJ5MSAxPAs',
   database: 'db',
-  // host: 'localhost', 
-  // user: 'root', 
-  // password: '0493', 
-  // database: 'unitest_cms', 
+  // timezone: '+08:00', // Not needed if RDS is already set to Asia/Singapore
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
 });
+
+// ✅ Monkey-patch pool.query to auto-format all Date fields to SGT
+const originalQuery = pool.query.bind(pool);
+pool.query = function (sql, params, callback) {
+  if (typeof params === 'function') {
+    callback = params;
+    params = undefined;
+  }
+
+  return originalQuery(sql, params, (err, results, fields) => {
+    if (err) return callback(err);
+    const formatted = formatDatesToSGT(results);
+    callback(null, formatted, fields);
+  });
+};
+
+// Example route to confirm setup works
+app.get('/', (req, res) => {
+  pool.query('SELECT NOW() AS current_time', (err, results) => {
+    if (err) return res.status(500).json({ error: 'DB error' });
+    res.json(results);
+  });
+});
+
+// app.listen(port, () => {
+//   console.log(`Server running on http://localhost:${port}`);
+// });
+
+module.exports = pool;
+
 
 
 
@@ -312,44 +342,6 @@ app.post('/api/certifications', (req, res) => {
     res.status(201).json({ message: 'Certification inserted successfully' });
   });
 });
-// app.post('/api/certifications', async (req, res) => {
-//   const {
-//     certificateType,
-//     jobNumber,
-//     customerName,
-//     serialNumber,
-//     brandName,
-//     modelNumber,
-//     testRange = null, // Allow null if not provided
-//     calibratedBy = 'Ryan', // Default value if empty
-//     cert_number
-//   } = req.body;
-
-
-//   let tableName;
-//   try {
-//     tableName = getTableName(certificateType); // Get the correct table name
-//   } catch (error) {
-//     return res.status(400).json({ error: error.message });
-//   }
-
-//   try {
-//     const query = `INSERT INTO ${tableName} (cert_number, job_number, customer_name, serial_number, brand_name, model_number, reading_range, calibrated_by, modified_date_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())`;
-    
-//     // Use pool to perform the query
-//     pool.query(query, [cert_number, jobNumber, customerName, serialNumber, brandName, modelNumber, testRange, calibratedBy], (error, results) => {
-//       if (error) {
-//         console.error('Error inserting certification:', error);
-//         return res.status(500).json({ error: 'Failed to create certification' });
-//       }
-//       res.status(201).json({ message: 'Certification created successfully' });
-//     });
-//   } catch (error) {
-//     console.error('Unexpected error:', error);
-//     res.status(500).json({ error: 'Unexpected error occurred' });
-//   }
-// });
-
 
 // Endpoint to fetch the latest certificate
 app.get('/api/latest-certificate', async (req, res) => {
