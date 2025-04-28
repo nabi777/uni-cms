@@ -70,6 +70,32 @@ const allowedCertTypes = [
 ];
 
 
+
+// Fetch all emails for Order Reminder
+app.get('/api/emails', (req, res) => {
+  const query = `
+    SELECT 
+      email_id,
+      job_no,
+      po_no,
+      customer_name,
+      cal_date,
+      due_date,
+      to_email_date,
+      modified_date_time
+    FROM emails
+    ORDER BY modified_date_time DESC
+  `;
+
+  pool.query(query, (error, results) => {
+    if (error) {
+      console.error('Error fetching emails:', error);
+      return res.status(500).json({ error: 'Failed to fetch emails' });
+    }
+    res.json(results);
+  });
+});
+
 //update cert
 
 app.put('/api/certifications/:certNumber', async (req, res) => {

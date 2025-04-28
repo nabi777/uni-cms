@@ -11,9 +11,8 @@
         <li @click="navigate('product-management')"><a class="sidebar-link">Product Management</a></li>
         <li @click="navigate('model-management')"><a class="sidebar-link">Model Management</a></li>
         <li @click="navigate('order-management')"><a class="sidebar-link">Order Management</a></li>
-        
-        <!-- New Nav Item for Cert Registry -->
         <li @click="navigate('cert-registry')"><a class="sidebar-link">Cert Registry</a></li>
+        <li @click="navigate('order-reminder')"><a class="sidebar-link">Order Reminder</a></li>
 
         <!-- Only show the Register Account link if the user is 'admin' -->
         <li v-if="isAdmin" @click="navigate('register-account')">

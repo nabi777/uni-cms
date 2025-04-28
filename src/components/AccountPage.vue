@@ -60,6 +60,8 @@ import NewModelForm from './NewModelForm.vue';
 import UsersPage from './UsersPage.vue';
 import CertRegistry from './CertRegistry.vue';
 import NewCertForm from './NewCertForm.vue';
+import OrderReminder from './OrderReminder.vue';
+
 
 export default {
   name: 'AccountPage',
@@ -78,6 +80,7 @@ export default {
     EditCustomerForm,
     EditProductForm,
     EditModelForm,
+    OrderReminder,
     NewAccountForm,
     NewCustomerForm,
     NewProductForm,
@@ -260,6 +263,11 @@ export default {
         this.pageTitle = 'Register Account';
         this.buttonText = 'Add New User';
         this.isUsersPageVisible = true;
+      }
+      else if (page === 'order-reminder') {
+      this.pageTitle = 'Order Reminder';
+      this.buttonText = 'Export to Excel'; // (optional, or whatever button you want)
+      this.currentComponent = 'OrderReminder';
       }
     },
     refreshUsersTable() {
