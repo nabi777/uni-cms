@@ -635,16 +635,43 @@ app.post('/api/emails', (req, res) => {
 });
 
 
+
 // Update Order by ID
 app.put('/api/orders/:orderId', (req, res) => {
   const orderId = req.params.orderId;
-  const { customerName, salesPerson, orderType, addedModels } = req.body;
+  const {
+    customerName,
+    salesPerson,
+    orderType,
+    poNumber,
+    jobNumber,
+    addedModels
+  } = req.body;
 
-  console.log('Received request to update order:', orderId, customerName, salesPerson, orderType);
+  // Log full body and key values
+  console.log('FULL REQUEST BODY:', JSON.stringify(req.body, null, 2));
+  console.log(`Updating order ${orderId} for ${customerName}`);
+  console.log(`Sales Person: ${salesPerson}, Order Type: ${orderType}, Job #: ${jobNumber}, PO #: ${poNumber}`);
 
-  // SQL queries to update the order and related models
-  const updateOrderSql = `UPDATE orders SET customer_name = ?, sales_person = ?, order_type = ? WHERE order_id = ?`;
-  const updateOrderData = [customerName, salesPerson, orderType, orderId];
+  // SQL query to update the order
+  const updateOrderSql = `
+    UPDATE orders 
+    SET customer_name = ?, 
+        sales_person = ?, 
+        order_type = ?, 
+        job_number = ?, 
+        po_number = ?, 
+        modified_date_time = NOW()
+    WHERE order_id = ?`;
+
+  const updateOrderData = [
+    customerName,
+    salesPerson,
+    orderType,
+    jobNumber,   // ✅ must match SQL order
+    poNumber,
+    orderId
+  ];
 
   pool.query(updateOrderSql, updateOrderData, (err, results) => {
     if (err) {
@@ -652,7 +679,20 @@ app.put('/api/orders/:orderId', (req, res) => {
       return res.status(500).json({ message: 'Error updating order' });
     }
 
-    // Update models in the database (assuming models are handled in a separate table)
+    // Optional: Log what is in DB after update
+    pool.query(
+      'SELECT job_number, po_number FROM orders WHERE order_id = ?',
+      [orderId],
+      (err, rows) => {
+        if (err) {
+          console.error('Error checking updated order:', err);
+        } else {
+          console.log('DB after update:', rows[0]);
+        }
+      }
+    );
+
+    // Delete existing models linked to this order
     const deleteOldModelsSql = `DELETE FROM order_models WHERE order_id = ?`;
     pool.query(deleteOldModelsSql, [orderId], (err) => {
       if (err) {
@@ -660,9 +700,21 @@ app.put('/api/orders/:orderId', (req, res) => {
         return res.status(500).json({ message: 'Error deleting old models' });
       }
 
-      // Insert the new models
-      const insertModelsSql = `INSERT INTO order_models (order_id, brand_name, model_number, tag_number, serial_number, cert_number) VALUES ?`;
-      const modelData = addedModels.map(model => [orderId, model.brand, model.modelNumber, model.tagNumber, model.serialNumber, model.certNumber]);
+      // Insert new models into order_models table
+      const insertModelsSql = `
+        INSERT INTO order_models 
+        (order_id, brand_name, model_number, tag_number, serial_number, cert_number, job_number)
+        VALUES ?`;
+
+      const modelData = addedModels.map(model => [
+        orderId,
+        model.brand,
+        model.modelNumber,
+        model.tagNumber,
+        model.serialNumber,
+        model.certNumber,
+        jobNumber  // ✅ insert job number into each model
+      ]);
 
       pool.query(insertModelsSql, [modelData], (err) => {
         if (err) {
@@ -670,12 +722,56 @@ app.put('/api/orders/:orderId', (req, res) => {
           return res.status(500).json({ message: 'Error inserting models' });
         }
 
-        // Respond with success
-        res.json({ message: 'Order updated successfully' });
+        res.json({ message: '✅ Order updated successfully' });
       });
     });
   });
 });
+
+
+
+
+// Update Order by ID
+// app.put('/api/orders/:orderId', (req, res) => {
+//   const orderId = req.params.orderId;
+//   const { customerName, salesPerson, orderType, addedModels } = req.body;
+
+//   console.log('Received request to update order:', orderId, customerName, salesPerson, orderType);
+
+//   // SQL queries to update the order and related models
+//   const updateOrderSql = `UPDATE orders SET customer_name = ?, sales_person = ?, order_type = ? WHERE order_id = ?`;
+//   const updateOrderData = [customerName, salesPerson, orderType, orderId];
+
+//   pool.query(updateOrderSql, updateOrderData, (err, results) => {
+//     if (err) {
+//       console.error('Error updating order:', err);
+//       return res.status(500).json({ message: 'Error updating order' });
+//     }
+
+//     // Update models in the database (assuming models are handled in a separate table)
+//     const deleteOldModelsSql = `DELETE FROM order_models WHERE order_id = ?`;
+//     pool.query(deleteOldModelsSql, [orderId], (err) => {
+//       if (err) {
+//         console.error('Error deleting old models:', err);
+//         return res.status(500).json({ message: 'Error deleting old models' });
+//       }
+
+//       // Insert the new models
+//       const insertModelsSql = `INSERT INTO order_models (order_id, brand_name, model_number, tag_number, serial_number, cert_number) VALUES ?`;
+//       const modelData = addedModels.map(model => [orderId, model.brand, model.modelNumber, model.tagNumber, model.serialNumber, model.certNumber]);
+
+//       pool.query(insertModelsSql, [modelData], (err) => {
+//         if (err) {
+//           console.error('Error inserting models:', err);
+//           return res.status(500).json({ message: 'Error inserting models' });
+//         }
+
+//         // Respond with success
+//         res.json({ message: 'Order updated successfully' });
+//       });
+//     });
+//   });
+// });
 
 // Get order by ID
 app.get('/api/orders/:orderId', (req, res) => {
